@@ -35,26 +35,28 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
               <button
                 onClick={onBack}
-                className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary-100 active:bg-secondary-200 rounded-lg transition-colors flex-shrink-0 touch-manipulation"
                 title="Back to Call Logs"
+                aria-label="Back"
               >
                 <ArrowLeft className="w-5 h-5 text-secondary-600" />
               </button>
               <button
                 onClick={onHome}
-                className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary-100 active:bg-secondary-200 rounded-lg transition-colors flex-shrink-0 touch-manipulation"
                 title="Home"
+                aria-label="Home"
               >
                 <Home className="w-5 h-5 text-secondary-600" />
               </button>
-              <div>
-                <h1 className="text-xl font-semibold text-secondary-900">Call Details</h1>
-                <p className="text-xs text-secondary-500 mt-0.5">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">Call Details</h1>
+                <p className="text-xs text-secondary-500 mt-0.5 truncate">
                   {campaign.name} • {call.id}
                 </p>
               </div>
@@ -64,32 +66,32 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Left Column - Main Info */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Call Overview */}
-            <div className="card p-6">
-              <h2 className="text-base font-semibold text-secondary-900 mb-4 flex items-center">
-                <Phone className="w-5 h-5 mr-2 text-primary-600" />
+            <div className="card p-4 sm:p-6">
+              <h2 className="text-base font-semibold text-secondary-900 mb-3 sm:mb-4 flex items-center">
+                <Phone className="w-5 h-5 mr-2 text-primary-600 flex-shrink-0" />
                 Call Overview
               </h2>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Phone Number</p>
                     <div className="flex items-center space-x-2">
-                      <Phone className="w-4 h-4 text-secondary-400" />
-                      <p className="text-sm font-medium text-secondary-900">{call.phoneNumber}</p>
+                      <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                      <p className="text-sm font-medium text-secondary-900 break-all">{call.phoneNumber}</p>
                     </div>
                   </div>
                   
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Date & Time</p>
                     <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-secondary-400" />
-                      <p className="text-sm text-secondary-900">{call.date} at {call.time}</p>
+                      <Calendar className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                      <p className="text-sm text-secondary-900 break-words">{call.date} at {call.time}</p>
                     </div>
                   </div>
                 </div>
@@ -98,7 +100,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Duration</p>
                     <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-secondary-400" />
+                      <Clock className="w-4 h-4 text-secondary-400 flex-shrink-0" />
                       <p className="text-sm font-medium text-secondary-900">{call.duration}</p>
                     </div>
                   </div>
@@ -106,7 +108,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Status</p>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(call.status)}`}>
-                      {call.status === 'completed' ? <CheckCircle className="w-3 h-3 mr-1" /> : <AlertCircle className="w-3 h-3 mr-1" />}
+                      {call.status === 'completed' ? <CheckCircle className="w-3 h-3 mr-1 flex-shrink-0" /> : <AlertCircle className="w-3 h-3 mr-1 flex-shrink-0" />}
                       {call.status.charAt(0).toUpperCase() + call.status.slice(1)}
                     </span>
                   </div>
@@ -132,13 +134,13 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
             </div>
 
             {/* Lead Keywords & Qualification */}
-            <div className="card p-6">
-              <h2 className="text-base font-semibold text-secondary-900 mb-4 flex items-center">
-                <Tag className="w-5 h-5 mr-2 text-primary-600" />
+            <div className="card p-4 sm:p-6">
+              <h2 className="text-base font-semibold text-secondary-900 mb-3 sm:mb-4 flex items-center">
+                <Tag className="w-5 h-5 mr-2 text-primary-600 flex-shrink-0" />
                 Lead Information & Keywords
               </h2>
               
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                 {call.keywords?.budget && (
                   <div className="bg-secondary-50 p-4 rounded-lg">
                     <div className="flex items-center space-x-2 mb-2">
@@ -209,14 +211,14 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
             </div>
 
             {/* Transcript */}
-            <div className="card p-6">
-              <h2 className="text-base font-semibold text-secondary-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-primary-600" />
+            <div className="card p-4 sm:p-6">
+              <h2 className="text-base font-semibold text-secondary-900 mb-3 sm:mb-4 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-primary-600 flex-shrink-0" />
                 Call Transcript
               </h2>
               
-              <div className="bg-secondary-50 p-4 rounded-lg">
-                <pre className="text-sm text-secondary-700 whitespace-pre-wrap font-sans leading-relaxed">
+              <div className="bg-secondary-50 p-3 sm:p-4 rounded-lg">
+                <pre className="text-xs sm:text-sm text-secondary-700 whitespace-pre-wrap font-sans leading-relaxed overflow-x-auto">
                   {call.transcript}
                 </pre>
               </div>
@@ -224,11 +226,11 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
           </div>
 
           {/* Right Column - Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Lead Qualification */}
-            <div className="card p-5">
+            <div className="card p-4 sm:p-5">
               <h3 className="text-sm font-semibold text-secondary-900 mb-3 flex items-center">
-                <CheckCircle className="w-4 h-4 mr-2 text-primary-600" />
+                <CheckCircle className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" />
                 Lead Qualification
               </h3>
               
@@ -257,26 +259,26 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
 
             {/* Next Action */}
             {call.nextAction && (
-              <div className="card p-5">
+              <div className="card p-4 sm:p-5">
                 <h3 className="text-sm font-semibold text-secondary-900 mb-3 flex items-center">
-                  <MessageSquare className="w-4 h-4 mr-2 text-primary-600" />
+                  <MessageSquare className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" />
                   Next Action
                 </h3>
-                <p className="text-sm text-secondary-700 leading-relaxed">{call.nextAction}</p>
+                <p className="text-xs sm:text-sm text-secondary-700 leading-relaxed break-words">{call.nextAction}</p>
               </div>
             )}
 
             {/* Campaign Info */}
-            <div className="card p-5">
+            <div className="card p-4 sm:p-5">
               <h3 className="text-sm font-semibold text-secondary-900 mb-3">Campaign</h3>
               <div className="space-y-2">
                 <div>
                   <p className="text-xs text-secondary-500">Name</p>
-                  <p className="text-sm text-secondary-900 font-medium">{campaign.name}</p>
+                  <p className="text-sm text-secondary-900 font-medium break-words">{campaign.name}</p>
                 </div>
                 <div>
                   <p className="text-xs text-secondary-500">ID</p>
-                  <p className="text-sm text-secondary-900">{campaign.id}</p>
+                  <p className="text-sm text-secondary-900 break-all">{campaign.id}</p>
                 </div>
                 <div>
                   <p className="text-xs text-secondary-500">Type</p>
@@ -286,7 +288,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
             </div>
 
             {/* Quick Stats */}
-            <div className="card p-5">
+            <div className="card p-4 sm:p-5">
               <h3 className="text-sm font-semibold text-secondary-900 mb-3">Quick Stats</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">

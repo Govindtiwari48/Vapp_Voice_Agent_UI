@@ -6,6 +6,22 @@
   body {
     @apply bg-secondary-50 font-sans antialiased;
   }
+  
+  /* Improve touch targets on mobile */
+  button, a, [role="button"] {
+    @apply touch-manipulation;
+  }
+  
+  /* Prevent text size adjustment on iOS */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 @layer components {

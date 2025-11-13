@@ -42,33 +42,35 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
               <button
                 onClick={onBack}
-                className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary-100 active:bg-secondary-200 rounded-lg transition-colors flex-shrink-0 touch-manipulation"
                 title="Back"
+                aria-label="Back"
               >
                 <ArrowLeft className="w-5 h-5 text-secondary-600" />
               </button>
               <button
                 onClick={onHome}
-                className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary-100 active:bg-secondary-200 rounded-lg transition-colors flex-shrink-0 touch-manipulation"
                 title="Home"
+                aria-label="Home"
               >
                 <Home className="w-5 h-5 text-secondary-600" />
               </button>
-              <div>
-                <div className="flex items-center space-x-2">
-                  <h1 className="text-xl font-semibold text-secondary-900">{campaign.name}</h1>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 flex-wrap">
+                  <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">{campaign.name}</h1>
                   {campaign.status === 'active' ? (
-                    <span className="badge badge-success">Active</span>
+                    <span className="badge badge-success flex-shrink-0">Active</span>
                   ) : (
-                    <span className="badge badge-warning">Paused</span>
+                    <span className="badge badge-warning flex-shrink-0">Paused</span>
                   )}
                 </div>
-                <p className="text-xs text-secondary-500 mt-0.5">
+                <p className="text-xs text-secondary-500 mt-0.5 truncate">
                   {campaign.id} • {campaign.callLogs.length} calls
                 </p>
               </div>
@@ -78,32 +80,32 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="card p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Total Calls</p>
-            <p className="text-2xl font-bold text-secondary-900">{campaign.totalCalls}</p>
+            <p className="text-xl sm:text-2xl font-bold text-secondary-900">{campaign.totalCalls}</p>
           </div>
-          <div className="card p-4">
+          <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Successful</p>
-            <p className="text-2xl font-bold text-green-600">{campaign.successfulCalls}</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-600">{campaign.successfulCalls}</p>
           </div>
-          <div className="card p-4">
+          <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Avg Duration</p>
-            <p className="text-2xl font-bold text-secondary-900">{campaign.avgDuration}</p>
+            <p className="text-xl sm:text-2xl font-bold text-secondary-900">{campaign.avgDuration}</p>
           </div>
-          <div className="card p-4">
+          <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Success Rate</p>
-            <p className="text-2xl font-bold text-blue-600">
+            <p className="text-xl sm:text-2xl font-bold text-blue-600">
               {Math.round((campaign.successfulCalls / campaign.totalCalls) * 100)}%
             </p>
           </div>
         </div>
 
-        {/* Call Logs Table */}
-        <div className="card">
-          <div className="px-6 py-4 border-b border-secondary-200">
+        {/* Call Logs - Desktop Table View */}
+        <div className="card hidden md:block">
+          <div className="px-4 sm:px-6 py-4 border-b border-secondary-200">
             <h2 className="text-base font-semibold text-secondary-900">Call Logs</h2>
             <p className="text-xs text-secondary-500 mt-0.5">Click on any call to view details</p>
           </div>
@@ -112,25 +114,25 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
             <table className="w-full">
               <thead className="bg-secondary-50 border-b border-secondary-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                     Call ID
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                     Phone Number
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                     Date & Time
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                     Duration
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                     Qualification
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                     Location
                   </th>
                 </tr>
@@ -142,35 +144,35 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     onClick={() => onSelectCall(call)}
                     className="hover:bg-secondary-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(call.status)}
                         <span className="text-sm font-medium text-secondary-900">{call.id}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         <Phone className="w-4 h-4 text-secondary-400" />
                         <span className="text-sm text-secondary-900">{call.phoneNumber}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-secondary-900">{call.date}</div>
                       <div className="text-xs text-secondary-500">{call.time}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-1.5">
                         <Clock className="w-4 h-4 text-secondary-400" />
                         <span className="text-sm text-secondary-900">{call.duration}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(call.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       {getQualificationBadge(call.leadQualification)}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">
                       <span className="text-sm text-secondary-900">
                         {call.keywords?.location || 'N/A'}
                       </span>
@@ -180,6 +182,56 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Call Logs - Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          <div className="mb-3">
+            <h2 className="text-base font-semibold text-secondary-900">Call Logs</h2>
+            <p className="text-xs text-secondary-500 mt-0.5">Tap on any call to view details</p>
+          </div>
+          {campaign.callLogs.map((call) => (
+            <div
+              key={call.id}
+              onClick={() => onSelectCall(call)}
+              className="card p-4 cursor-pointer active:bg-secondary-50 transition-colors"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                  {getStatusIcon(call.status)}
+                  <span className="text-sm font-medium text-secondary-900 truncate">{call.id}</span>
+                </div>
+                {getStatusBadge(call.status)}
+              </div>
+              
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                  <span className="text-sm text-secondary-900">{call.phoneNumber}</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                  <div>
+                    <div className="text-xs text-secondary-900">{call.date}</div>
+                    <div className="text-xs text-secondary-500">{call.time} • {call.duration}</div>
+                  </div>
+                </div>
+                
+                {call.keywords?.location && (
+                  <div className="text-xs text-secondary-600">
+                    📍 {call.keywords.location}
+                  </div>
+                )}
+              </div>
+              
+              {getQualificationBadge(call.leadQualification) && (
+                <div className="pt-2 border-t border-secondary-100">
+                  {getQualificationBadge(call.leadQualification)}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>
