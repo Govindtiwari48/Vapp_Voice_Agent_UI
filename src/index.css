@@ -56,5 +56,13 @@
   .badge-info {
     @apply bg-blue-100 text-blue-800;
   }
+  
+  .input {
+    @apply w-full px-3 py-2 border border-secondary-200 rounded-md text-secondary-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder-secondary-400;
+  }
+  
+  .textarea {
+    @apply w-full px-3 py-2 border border-secondary-200 rounded-md text-secondary-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder-secondary-400 resize-none;
+  }
 }
 

@@ -1,6 +1,27 @@
-import { ArrowLeft, Home, Phone, Clock, CheckCircle, XCircle, AlertCircle, Play } from 'lucide-react'
+import { useState } from 'react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle,
+  Clock,
+  Download,
+  Home,
+  IndianRupee,
+  Phone,
+  XCircle
+} from 'lucide-react'
+
+const filterOptions = [
+  { label: 'Today', value: 'today' },
+  { label: 'Yesterday', value: 'yesterday' },
+  { label: 'Last 7 days', value: 'last7' },
+  { label: 'Last 15 days', value: 'last15' },
+  { label: 'Last 30 days', value: 'last30' },
+  { label: 'Custom range', value: 'custom' }
+]
 
 const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
+  const [activeFilter, setActiveFilter] = useState('today')
   const getStatusIcon = (status) => {
     switch (status) {
       case 'completed':
@@ -36,6 +57,15 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
       default:
         return null
     }
+  }
+
+  const formattedSuccessRate = campaign.totalCalls
+    ? Math.round((campaign.successfulCalls / campaign.totalCalls) * 100)
+    : 0
+
+  const formatCurrency = (value) => {
+    if (typeof value !== 'number') return '—'
+    return `₹ ${value.toFixed(2)}`
   }
 
   return (
@@ -98,22 +128,53 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Success Rate</p>
             <p className="text-xl sm:text-2xl font-bold text-blue-600">
-              {Math.round((campaign.successfulCalls / campaign.totalCalls) * 100)}%
+              {formattedSuccessRate}%
             </p>
+          </div>
+        </div>
+
+        <div className="card p-4 sm:p-5 mb-4 sm:mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-secondary-500">Allocated DID Number</p>
+              <p className="text-xl font-semibold text-secondary-900">{campaign.allocatedDid || 'Not assigned'}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {filterOptions.map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => setActiveFilter(filter.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide border ${
+                    activeFilter === filter.value
+                      ? 'bg-primary-600 text-white border-primary-600'
+                      : 'border-secondary-200 text-secondary-600 hover:text-secondary-900'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            <button className="btn-secondary inline-flex items-center space-x-2 text-sm">
+              <Download className="w-4 h-4" />
+              <span>Download XLSX</span>
+            </button>
           </div>
         </div>
 
         {/* Call Logs - Desktop Table View */}
         <div className="card hidden md:block">
           <div className="px-4 sm:px-6 py-4 border-b border-secondary-200">
-            <h2 className="text-base font-semibold text-secondary-900">Call Logs</h2>
-            <p className="text-xs text-secondary-500 mt-0.5">Click on any call to view details</p>
+            <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
+            <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p>
           </div>
           
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-secondary-50 border-b border-secondary-200">
                 <tr>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                    Status
+                  </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                     Call ID
                   </th>
@@ -127,13 +188,13 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     Duration
                   </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Status
+                    Spend (INR)
                   </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Qualification
+                    Disposition Type
                   </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Location
+                    Action
                   </th>
                 </tr>
               </thead>
@@ -144,6 +205,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     onClick={() => onSelectCall(call)}
                     className="hover:bg-secondary-50 cursor-pointer transition-colors"
                   >
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">{getStatusBadge(call.status)}</td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(call.status)}
@@ -167,15 +229,22 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(call.status)}
+                      <div className="flex items-center space-x-2">
+                        <IndianRupee className="w-4 h-4 text-secondary-400" />
+                        <span className="text-sm font-medium text-secondary-900">{formatCurrency(call.spendInr)}</span>
+                      </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {getQualificationBadge(call.leadQualification)}
+                      {call.dispositionType ? (
+                        <span className={`badge ${call.dispositionType === 'Successful' ? 'badge-success' : 'badge-warning'}`}>
+                          {call.dispositionType}
+                        </span>
+                      ) : (
+                        getStatusBadge(call.status)
+                      )}
                     </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <span className="text-sm text-secondary-900">
-                        {call.keywords?.location || 'N/A'}
-                      </span>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-primary-600 font-semibold">
+                      {call.recommendedAction || '—'}
                     </td>
                   </tr>
                 ))}
@@ -187,7 +256,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
         {/* Call Logs - Mobile Card View */}
         <div className="md:hidden space-y-3">
           <div className="mb-3">
-            <h2 className="text-base font-semibold text-secondary-900">Call Logs</h2>
+            <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
             <p className="text-xs text-secondary-500 mt-0.5">Tap on any call to view details</p>
           </div>
           {campaign.callLogs.map((call) => (
@@ -218,16 +287,22 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                   </div>
                 </div>
                 
-                {call.keywords?.location && (
-                  <div className="text-xs text-secondary-600">
-                    📍 {call.keywords.location}
-                  </div>
-                )}
+                <div className="flex items-center space-x-2">
+                  <IndianRupee className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                  <span className="text-xs text-secondary-900">{formatCurrency(call.spendInr)}</span>
+                </div>
+
               </div>
               
               {getQualificationBadge(call.leadQualification) && (
                 <div className="pt-2 border-t border-secondary-100">
                   {getQualificationBadge(call.leadQualification)}
+                </div>
+              )}
+
+              {call.recommendedAction && (
+                <div className="mt-3 pt-3 border-t border-secondary-100 text-xs font-semibold text-primary-600">
+                  Action: {call.recommendedAction}
                 </div>
               )}
             </div>

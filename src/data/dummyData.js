@@ -8,6 +8,7 @@ export const campaigns = {
       successfulCalls: 98,
       avgDuration: '4:32',
       createdDate: '2025-10-15',
+      allocatedDid: '798784112',
       callLogs: [
         {
           id: 'CALL001',
@@ -43,7 +44,14 @@ Agent: Absolutely. I'll arrange that for you. Let me get your email to send the 
             intent: 'High - Ready to view'
           },
           sentiment: 'positive',
-          nextAction: 'Schedule viewing this weekend'
+          nextAction: 'Schedule viewing this weekend',
+          spendInr: 7.26,
+          recordingFormat: 'mp3',
+          transcriptionFormat: 'pdf',
+          transcriptionSummary: 'Buyer ready for a 3 BHK in downtown Manhattan with ~$800k-$1M budget and locked a weekend viewing.',
+          dispositionType: 'Successful',
+          recommendedAction: 'Send Info on WhatsApp',
+          transcriptPdfUrl: 'https://example.com/transcripts/call001.pdf'
         },
         {
           id: 'CALL002',
@@ -75,7 +83,14 @@ Agent: Perfect, I'll arrange that. Can I get your name and best contact number?`
             intent: 'High - Requested callback'
           },
           sentiment: 'positive',
-          nextAction: 'Senior agent callback tomorrow afternoon'
+          nextAction: 'Senior agent callback tomorrow afternoon',
+          spendInr: 6.1,
+          recordingFormat: 'mp3',
+          transcriptionFormat: 'pdf',
+          transcriptionSummary: 'High-intent penthouse prospect (budget < $1.5M) requested a senior agent callback for tomorrow afternoon.',
+          dispositionType: 'Successful',
+          recommendedAction: 'Schedule Call',
+          transcriptPdfUrl: 'https://example.com/transcripts/call002.pdf'
         },
         {
           id: 'CALL003',
@@ -109,7 +124,14 @@ Customer: Sure, that would be helpful.`,
             intent: 'Medium - Early stage browsing'
           },
           sentiment: 'neutral',
-          nextAction: 'Send property listings via email'
+          nextAction: 'Send property listings via email',
+          spendInr: 5.75,
+          recordingFormat: 'mp3',
+          transcriptionFormat: 'pdf',
+          transcriptionSummary: 'Early-stage 2 BHK condo searcher in Queens with $500-600K budget—email curated options.',
+          dispositionType: 'Successful',
+          recommendedAction: 'Send Info on WhatsApp',
+          transcriptPdfUrl: 'https://example.com/transcripts/call003.pdf'
         }
       ]
     },
@@ -121,6 +143,7 @@ Customer: Sure, that would be helpful.`,
       successfulCalls: 56,
       avgDuration: '3:45',
       createdDate: '2025-10-20',
+      allocatedDid: '778845221',
       callLogs: [
         {
           id: 'CALL004',
@@ -151,7 +174,14 @@ Agent: Perfect. I can show you several options. When would be a good time for vi
             intent: 'Medium - Interested in viewings'
           },
           sentiment: 'positive',
-          nextAction: 'Schedule property viewings'
+          nextAction: 'Schedule property viewings',
+          spendInr: 4.95,
+          recordingFormat: 'mp3',
+          transcriptionFormat: 'pdf',
+          transcriptionSummary: 'Affordable 1 BHK buyer (Queens/Bronx, $300-400K) ready to view shortlisted units.',
+          dispositionType: 'Successful',
+          recommendedAction: 'Setup Site Visit',
+          transcriptPdfUrl: 'https://example.com/transcripts/call004.pdf'
         }
       ]
     }
@@ -165,6 +195,7 @@ Agent: Perfect. I can show you several options. When would be a good time for vi
       successfulCalls: 45,
       avgDuration: '3:15',
       createdDate: '2025-10-25',
+      allocatedDid: '909877612',
       callLogs: [
         {
           id: 'CALL005',
@@ -198,7 +229,14 @@ Customer: Perfect, thank you!`,
             intent: 'High - Confirmed viewing'
           },
           sentiment: 'positive',
-          nextAction: 'Confirm Saturday viewing details'
+          nextAction: 'Confirm Saturday viewing details',
+          spendInr: 6.9,
+          recordingFormat: 'mp3',
+          transcriptionFormat: 'pdf',
+          transcriptionSummary: 'Previous 3 BHK lead reconfirmed interest and booked a Saturday viewing; send invite & prep brochure.',
+          dispositionType: 'Successful',
+          recommendedAction: 'Setup Site Visit',
+          transcriptPdfUrl: 'https://example.com/transcripts/call005.pdf'
         },
         {
           id: 'CALL006',
@@ -216,7 +254,14 @@ Customer: Perfect, thank you!`,
             intent: 'Unknown - No contact'
           },
           sentiment: 'neutral',
-          nextAction: 'Retry call tomorrow'
+          nextAction: 'Retry call tomorrow',
+          spendInr: 2.1,
+          recordingFormat: 'mp3',
+          transcriptionFormat: 'text',
+          transcriptionSummary: 'Voicemail left; retry the outreach tomorrow.',
+          dispositionType: 'Unsuccessful',
+          recommendedAction: 'Call',
+          transcriptPdfUrl: null
         }
       ]
     },
@@ -228,6 +273,7 @@ Customer: Perfect, thank you!`,
       successfulCalls: 87,
       avgDuration: '2:45',
       createdDate: '2025-11-01',
+      allocatedDid: '667801244',
       callLogs: [
         {
           id: 'CALL007',
@@ -264,7 +310,14 @@ Agent: Perfect! I'll send everything over today.`,
             intent: 'Medium - Requested information'
           },
           sentiment: 'positive',
-          nextAction: 'Send brochure and await response'
+          nextAction: 'Send brochure and await response',
+          spendInr: 5.45,
+          recordingFormat: 'mp3',
+          transcriptionFormat: 'pdf',
+          transcriptionSummary: 'Upper East Side launch piqued interest; prospect wants brochure before committing to a visit.',
+          dispositionType: 'Successful',
+          recommendedAction: 'Send Info on WhatsApp',
+          transcriptPdfUrl: 'https://example.com/transcripts/call007.pdf'
         }
       ]
     }

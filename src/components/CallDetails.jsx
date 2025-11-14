@@ -1,7 +1,21 @@
 import { 
-  ArrowLeft, Home, Phone, Clock, Calendar, Play, FileText, 
-  MapPin, DollarSign, Home as HomeIcon, Bed, TrendingUp, 
-  CheckCircle, AlertCircle, MessageSquare, Tag
+  AlertCircle,
+  ArrowLeft,
+  Calendar,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Download,
+  FileText,
+  Home,
+  Home as HomeIcon,
+  MapPin,
+  Bed,
+  MessageSquare,
+  Phone,
+  Play,
+  Tag,
+  TrendingUp
 } from 'lucide-react'
 
 const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
@@ -210,17 +224,50 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               )}
             </div>
 
-            {/* Transcript */}
+            {/* Transcript & Summary */}
             <div className="card p-4 sm:p-6">
-              <h2 className="text-base font-semibold text-secondary-900 mb-3 sm:mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-primary-600 flex-shrink-0" />
-                Call Transcript
-              </h2>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-base font-semibold text-secondary-900 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-primary-600 flex-shrink-0" />
+                  Call Transcript
+                </h2>
+                {call.transcript && (
+                  <div className="flex flex-wrap gap-2">
+                    {call.transcriptPdfUrl ? (
+                      <a
+                        href={call.transcriptPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-secondary inline-flex items-center space-x-2 text-sm"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download Transcript (PDF)</span>
+                      </a>
+                    ) : (
+                      <button type="button" className="btn-secondary text-sm opacity-50 cursor-not-allowed">
+                        Download Transcript (PDF)
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               
-              <div className="bg-secondary-50 p-3 sm:p-4 rounded-lg">
-                <pre className="text-xs sm:text-sm text-secondary-700 whitespace-pre-wrap font-sans leading-relaxed overflow-x-auto">
-                  {call.transcript}
-                </pre>
+              <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="bg-secondary-50 p-3 sm:p-4 rounded-lg lg:col-span-2">
+                  <pre className="text-xs sm:text-sm text-secondary-700 whitespace-pre-wrap font-sans leading-relaxed overflow-x-auto">
+                    {call.transcript}
+                  </pre>
+                </div>
+                <div className="bg-white border border-secondary-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-secondary-900">Conversation Summary</h3>
+                    <MessageSquare className="w-4 h-4 text-primary-600" />
+                  </div>
+                  <p className="text-xs text-secondary-500">High-level context for the team</p>
+                  <p className="text-sm text-secondary-800 leading-relaxed">
+                    {call.transcriptionSummary || 'Summary will appear after the AI transcript is processed.'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>

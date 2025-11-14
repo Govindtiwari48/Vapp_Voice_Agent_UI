@@ -1,6 +1,6 @@
-import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, Clock, CheckCircle, TrendingUp } from 'lucide-react'
+import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, Clock, CheckCircle, TrendingUp, Plus, Pause, Play } from 'lucide-react'
 
-const CampaignList = ({ type, campaigns, onSelectCampaign, onBack, onHome }) => {
+const CampaignList = ({ type, campaigns, onSelectCampaign, onBack, onHome, onCreateCampaign, onToggleCampaignStatus }) => {
   const isIncoming = type === 'incoming'
 
   return (
@@ -42,24 +42,46 @@ const CampaignList = ({ type, campaigns, onSelectCampaign, onBack, onHome }) => 
                 </div>
               </div>
             </div>
+            <button
+              onClick={onCreateCampaign}
+              className="btn-primary flex items-center space-x-2 flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Create Campaign</span>
+              <span className="sm:hidden">Create</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <div className="grid grid-cols-1 gap-3 sm:gap-4">
+        {campaigns.length === 0 ? (
+          <div className="card p-8 text-center">
+            <p className="text-secondary-600 mb-4">No campaigns found. Create your first campaign to get started.</p>
+            <button
+              onClick={onCreateCampaign}
+              className="btn-primary inline-flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Campaign</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
           {campaigns.map((campaign) => {
             const successRate = Math.round((campaign.successfulCalls / campaign.totalCalls) * 100)
             
             return (
               <div
                 key={campaign.id}
-                onClick={() => onSelectCampaign(campaign)}
-                className="card p-4 sm:p-5 cursor-pointer active:bg-secondary-50 hover:shadow-md transition-all duration-200 hover:border-primary-300 touch-manipulation"
+                className="card p-4 sm:p-5 hover:shadow-md transition-all duration-200 hover:border-primary-300"
               >
                 <div className="flex items-start justify-between mb-3 sm:mb-4">
-                  <div className="flex-1 min-w-0">
+                  <div 
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => onSelectCampaign(campaign)}
+                  >
                     <div className="flex items-center space-x-2 sm:space-x-3 mb-2 flex-wrap">
                       <h3 className="text-base font-semibold text-secondary-900 truncate flex-1 min-w-0">{campaign.name}</h3>
                       {campaign.status === 'active' ? (
@@ -76,9 +98,33 @@ const CampaignList = ({ type, campaigns, onSelectCampaign, onBack, onHome }) => 
                       <span>{campaign.callLogs.length} calls</span>
                     </div>
                   </div>
+                  <div className="flex items-center space-x-2 ml-4">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onToggleCampaignStatus(campaign.id, campaign.status === 'active' ? 'paused' : 'active')
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        campaign.status === 'active'
+                          ? 'hover:bg-yellow-100 text-yellow-600'
+                          : 'hover:bg-green-100 text-green-600'
+                      }`}
+                      title={campaign.status === 'active' ? 'Pause Campaign' : 'Activate Campaign'}
+                      aria-label={campaign.status === 'active' ? 'Pause Campaign' : 'Activate Campaign'}
+                    >
+                      {campaign.status === 'active' ? (
+                        <Pause className="w-5 h-5" />
+                      ) : (
+                        <Play className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <div 
+                  className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 cursor-pointer"
+                  onClick={() => onSelectCampaign(campaign)}
+                >
                   <div className="bg-secondary-50 rounded-lg p-3">
                     <div className="flex items-center space-x-2 mb-1">
                       <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
@@ -114,7 +160,8 @@ const CampaignList = ({ type, campaigns, onSelectCampaign, onBack, onHome }) => 
               </div>
             )
           })}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )
