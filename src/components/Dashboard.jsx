@@ -2,7 +2,6 @@ import {
   ArrowRight,
   GraduationCap,
   LayoutGrid,
-  Phone,
   PhoneIncoming,
   PhoneOutgoing,
   PlugZap,
@@ -60,13 +59,10 @@ const Dashboard = ({ onSelectType, onNavigateSection }) => {
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
       <div className="bg-white border-b border-secondary-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center space-x-3">
-          <div className="bg-primary-600 p-2 sm:p-2.5 rounded-lg flex-shrink-0">
-            <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-semibold text-secondary-900">Voice Agent Panel</h1>
-            <p className="text-xs text-secondary-500 mt-0.5">Unified workflow for dashboard, training and campaigns</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-secondary-900">Dashboard</h1>
+            <p className="text-sm text-secondary-500 mt-1">Unified workflow for dashboard, training and campaigns</p>
           </div>
         </div>
       </div>
