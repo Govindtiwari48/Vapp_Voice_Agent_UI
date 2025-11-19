@@ -18,36 +18,38 @@ const DashboardOverview = ({ onBack, onHome }) => {
   return (
     <div className="min-h-screen bg-secondary-50">
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onBack}
-              className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors"
-              aria-label="Back"
-            >
-              <ArrowLeft className="w-5 h-5 text-secondary-600" />
-            </button>
-            <button
-              onClick={onHome}
-              className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors"
-              aria-label="Home"
-            >
-              <Home className="w-5 h-5 text-secondary-600" />
-            </button>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-secondary-500">Section</p>
-              <h1 className="text-xl font-semibold text-secondary-900">Dashboard Overview</h1>
+        <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
+              <button
+                onClick={onBack}
+                className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors flex-shrink-0 touch-manipulation"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-5 h-5 text-secondary-600" />
+              </button>
+              <button
+                onClick={onHome}
+                className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors flex-shrink-0 touch-manipulation"
+                aria-label="Home"
+              >
+                <Home className="w-5 h-5 text-secondary-600" />
+              </button>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-secondary-500 hidden sm:block">Section</p>
+                <h1 className="text-lg sm:text-xl font-semibold text-secondary-900">Dashboard Overview</h1>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button className="btn-secondary inline-flex items-center space-x-2 text-sm">
-              <CalendarRange className="w-4 h-4" />
-              <span>Date Filter</span>
-            </button>
-            <button className="btn-primary inline-flex items-center space-x-2 text-sm">
-              <Download className="w-4 h-4" />
-              <span>Export Report</span>
-            </button>
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              <button className="btn-secondary inline-flex items-center space-x-2 text-sm p-2 sm:px-4">
+                <CalendarRange className="w-4 h-4" />
+                <span className="hidden sm:inline">Date Filter</span>
+              </button>
+              <button className="btn-primary inline-flex items-center space-x-2 text-sm p-2 sm:px-4">
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Export Report</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -79,17 +81,17 @@ const DashboardOverview = ({ onBack, onHome }) => {
             {metrics.map((metric) => (
               <div
                 key={metric.label}
-                className="border border-secondary-200 rounded-xl px-4 py-5 bg-white flex items-center justify-between hover:border-primary-200 transition-colors"
+                className="border border-secondary-200 rounded-xl px-3 sm:px-4 py-4 sm:py-5 bg-white flex items-center justify-between hover:border-primary-200 transition-colors"
               >
-                <div>
-                  <p className="text-sm text-secondary-500">{metric.label}</p>
-                  <p className="text-2xl font-semibold text-secondary-900 mt-1">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-secondary-500 break-words">{metric.label}</p>
+                  <p className="text-xl sm:text-2xl font-semibold text-secondary-900 mt-1">
                     {metric.value[range]}
                   </p>
-                  <p className="text-xs text-secondary-400 mt-1">Total / Weekly / Monthly / Specific dates</p>
+                  <p className="text-xs text-secondary-400 mt-1 hidden sm:block">Total / Weekly / Monthly / Specific dates</p>
                 </div>
-                <div className="bg-secondary-50 p-3 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-primary-600" />
+                <div className="bg-secondary-50 p-2 sm:p-3 rounded-lg flex-shrink-0 ml-2">
+                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
                 </div>
               </div>
             ))}

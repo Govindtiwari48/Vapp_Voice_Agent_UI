@@ -64,24 +64,28 @@ const ApiDocs = ({ onBack, onHome }) => {
   return (
     <div className="min-h-screen bg-secondary-50">
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center space-x-2">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-5 h-5 text-secondary-600" />
-          </button>
-          <button
-            onClick={onHome}
-            className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors"
-            aria-label="Home"
-          >
-            <Home className="w-5 h-5 text-secondary-600" />
-          </button>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-secondary-500">Section</p>
-            <h1 className="text-xl font-semibold text-secondary-900">API & Webhooks</h1>
+        <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
+              <button
+                onClick={onBack}
+                className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors flex-shrink-0"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-5 h-5 text-secondary-600" />
+              </button>
+              <button
+                onClick={onHome}
+                className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors flex-shrink-0"
+                aria-label="Home"
+              >
+                <Home className="w-5 h-5 text-secondary-600" />
+              </button>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-secondary-500">Section</p>
+                <h1 className="text-xl font-semibold text-secondary-900">API & Webhooks</h1>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -163,35 +167,59 @@ const ApiDocs = ({ onBack, onHome }) => {
             </div>
             <Webhook className="w-5 h-5 text-primary-600" />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-secondary-500 uppercase tracking-wide border-b border-secondary-200">
-                  <th className="py-3 pr-4">Method</th>
-                  <th className="py-3 pr-4">Path</th>
-                  <th className="py-3 pr-4">Description</th>
-                  <th className="py-3">Auth</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-secondary-200 text-sm text-secondary-700">
-                {endpoints.map((row) => (
-                  <tr key={row.path}>
-                    <td className="py-3 pr-4 font-mono text-xs">
-                      <span
-                        className={`px-2 py-1 rounded-md ${
-                          row.method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {row.method}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4 font-mono text-xs text-secondary-900">{row.path}</td>
-                    <td className="py-3 pr-4">{row.description}</td>
-                    <td className="py-3 text-secondary-500">{row.auth}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="inline-block min-w-full align-middle">
+              <div className="overflow-hidden">
+                <table className="min-w-full divide-y divide-secondary-200">
+                  <thead>
+                    <tr className="text-left text-xs text-secondary-500 uppercase tracking-wide border-b border-secondary-200">
+                      <th className="py-3 px-4">Method</th>
+                      <th className="py-3 px-4">Path</th>
+                      <th className="py-3 px-4 hidden sm:table-cell">Description</th>
+                      <th className="py-3 px-4 hidden md:table-cell">Auth</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-secondary-200 text-sm text-secondary-700">
+                    {endpoints.map((row) => (
+                      <tr key={row.path} className="hover:bg-secondary-50">
+                        <td className="py-3 px-4 font-mono text-xs whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 rounded-md ${
+                              row.method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            {row.method}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs text-secondary-900 break-all">{row.path}</td>
+                        <td className="py-3 px-4 hidden sm:table-cell">{row.description}</td>
+                        <td className="py-3 px-4 hidden md:table-cell text-secondary-500">{row.auth}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          {/* Mobile Card View for API Endpoints */}
+          <div className="sm:hidden space-y-3 mt-4">
+            {endpoints.map((row) => (
+              <div key={row.path} className="card p-4 space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span
+                    className={`px-2 py-1 rounded-md text-xs font-mono ${
+                      row.method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                    }`}
+                  >
+                    {row.method}
+                  </span>
+                  <span className="text-xs font-semibold text-secondary-500">Auth: {row.auth}</span>
+                </div>
+                <p className="font-mono text-xs text-secondary-900 break-all">{row.path}</p>
+                <p className="text-xs text-secondary-600">{row.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>

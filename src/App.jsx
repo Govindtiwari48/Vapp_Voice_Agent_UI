@@ -16,7 +16,9 @@ import {
   PhoneOutgoing,
   PlugZap,
   Wallet,
-  Phone
+  Phone,
+  Menu,
+  X
 } from 'lucide-react'
 
 function App() {
@@ -25,10 +27,12 @@ function App() {
   const [selectedCampaign, setSelectedCampaign] = useState(null)
   const [selectedCall, setSelectedCall] = useState(null)
   const [campaigns, setCampaigns] = useState(initialCampaigns)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const handleSelectCampaignType = (type) => {
     setSelectedCampaignType(type)
     setView('campaigns')
+    setIsMobileMenuOpen(false)
   }
 
   const handleSelectCampaign = (campaign) => {
@@ -46,6 +50,7 @@ function App() {
     setSelectedCampaignType(null)
     setSelectedCampaign(null)
     setSelectedCall(null)
+    setIsMobileMenuOpen(false)
   }
 
   const handleBack = () => {
@@ -146,37 +151,55 @@ function App() {
       id: 'dashboardOverview',
       label: 'Dashboard Overview',
       icon: LayoutGrid,
-      action: () => handleNavigateSection('dashboardOverview')
+      action: () => {
+        handleNavigateSection('dashboardOverview')
+        setIsMobileMenuOpen(false)
+      }
     },
     {
       id: 'projectTraining',
       label: 'Project Training',
       icon: GraduationCap,
-      action: () => handleNavigateSection('projectTraining')
+      action: () => {
+        handleNavigateSection('projectTraining')
+        setIsMobileMenuOpen(false)
+      }
     },
     {
       id: 'inbound',
       label: 'Inbound Campaigns',
       icon: PhoneIncoming,
-      action: () => handleSelectCampaignType('incoming')
+      action: () => {
+        handleSelectCampaignType('incoming')
+        setIsMobileMenuOpen(false)
+      }
     },
     {
       id: 'outbound',
       label: 'Outbound Campaigns',
       icon: PhoneOutgoing,
-      action: () => handleSelectCampaignType('outgoing')
+      action: () => {
+        handleSelectCampaignType('outgoing')
+        setIsMobileMenuOpen(false)
+      }
     },
     {
       id: 'apiDocs',
       label: 'API Docs',
       icon: PlugZap,
-      action: () => handleNavigateSection('apiDocs')
+      action: () => {
+        handleNavigateSection('apiDocs')
+        setIsMobileMenuOpen(false)
+      }
     },
     {
       id: 'wallet',
       label: 'Wallet Top-Up',
       icon: Wallet,
-      action: () => handleNavigateSection('wallet')
+      action: () => {
+        handleNavigateSection('wallet')
+        setIsMobileMenuOpen(false)
+      }
     }
   ]
 
@@ -201,21 +224,46 @@ function App() {
 
   return (
     <div className="min-h-screen bg-secondary-50 flex">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-4 z-30 p-3 bg-white rounded-lg shadow-md border border-secondary-200 hover:bg-secondary-50 active:bg-secondary-100 transition-colors touch-manipulation"
+        aria-label="Toggle menu"
+        aria-expanded={isMobileMenuOpen}
+      >
+        {isMobileMenuOpen ? (
+          <X className="w-6 h-6 text-secondary-700" />
+        ) : (
+          <Menu className="w-6 h-6 text-secondary-700" />
+        )}
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-20"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Left Sidebar Navigation */}
-      <aside className="w-64 bg-white border-r border-secondary-200 flex-shrink-0 fixed h-screen overflow-y-auto z-20">
-        <div className="p-6 border-b border-secondary-200">
+      <aside
+        className={`w-64 bg-white border-r border-secondary-200 flex-shrink-0 fixed h-screen overflow-y-auto z-20 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          } lg:translate-x-0`}
+      >
+        <div className="p-4 sm:p-6 border-b border-secondary-200">
           <div className="flex items-center space-x-3">
             <div className="bg-primary-600 p-2.5 rounded-lg flex-shrink-0">
-              <Phone className="w-6 h-6 text-white" />
+              <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold text-secondary-900">Voice Agent</h1>
+              <h1 className="text-base sm:text-lg font-semibold text-secondary-900">Voice Agent</h1>
               <p className="text-xs text-secondary-500">Control Panel</p>
             </div>
           </div>
         </div>
 
-        <nav className="p-4 space-y-1">
+        <nav className="p-3 sm:p-4 space-y-1">
           {navigationItems.map((item) => {
             const Icon = item.icon
             const isActive = activeNavId === item.id
@@ -223,11 +271,14 @@ function App() {
               <button
                 key={item.id}
                 onClick={item.action}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
-                  ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
+                className={`w-full flex items-center space-x-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all duration-200 relative touch-manipulation ${isActive
+                  ? 'bg-primary-50 text-primary-700'
                   : 'text-secondary-700 hover:bg-secondary-50 hover:text-secondary-900'
                   }`}
               >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r"></div>
+                )}
                 <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-600' : 'text-secondary-500'}`} />
                 <span className="flex-1 text-left">{item.label}</span>
               </button>
@@ -237,7 +288,7 @@ function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 ml-64 min-h-screen">
+      <main className="flex-1 lg:ml-64 min-h-screen w-full pt-16 lg:pt-0">
         {view === 'dashboard' && (
           <Dashboard onSelectType={handleSelectCampaignType} onNavigateSection={handleNavigateSection} />
         )}

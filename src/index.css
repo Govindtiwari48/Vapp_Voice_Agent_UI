@@ -8,8 +8,15 @@
   }
   
   /* Improve touch targets on mobile */
-  button, a, [role="button"] {
+  button:not(.icon-only), a:not(.icon-only), [role="button"]:not(.icon-only) {
     @apply touch-manipulation;
+  }
+  
+  /* Ensure adequate touch targets for interactive elements on mobile */
+  @media (max-width: 640px) {
+    button:not(.icon-only), a:not(.icon-only), [role="button"]:not(.icon-only) {
+      min-height: 44px; /* iOS recommended touch target size */
+    }
   }
   
   /* Prevent text size adjustment on iOS */
@@ -22,6 +29,16 @@
   html {
     scroll-behavior: smooth;
   }
+  
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Better mobile viewport handling */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @layer components {
@@ -30,11 +47,20 @@
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium;
+    @apply bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 active:bg-primary-800 transition-colors text-sm font-medium touch-manipulation;
   }
   
   .btn-secondary {
-    @apply bg-secondary-100 text-secondary-700 px-4 py-2 rounded-md hover:bg-secondary-200 transition-colors text-sm font-medium;
+    @apply bg-secondary-100 text-secondary-700 px-4 py-2 rounded-md hover:bg-secondary-200 active:bg-secondary-300 transition-colors text-sm font-medium touch-manipulation;
+  }
+  
+  /* Ensure buttons have adequate touch targets on mobile */
+  @media (max-width: 640px) {
+    .btn-primary, .btn-secondary {
+      min-height: 44px;
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
   }
   
   .badge {

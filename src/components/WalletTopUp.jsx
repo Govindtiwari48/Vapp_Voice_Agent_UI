@@ -21,24 +21,28 @@ const WalletTopUp = ({ onBack, onHome }) => {
   return (
     <div className="min-h-screen bg-secondary-50">
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center space-x-2">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-5 h-5 text-secondary-600" />
-          </button>
-          <button
-            onClick={onHome}
-            className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors"
-            aria-label="Home"
-          >
-            <Home className="w-5 h-5 text-secondary-600" />
-          </button>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-secondary-500">Section</p>
-            <h1 className="text-xl font-semibold text-secondary-900">Add Call Credits</h1>
+        <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
+              <button
+                onClick={onBack}
+                className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors flex-shrink-0"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-5 h-5 text-secondary-600" />
+              </button>
+              <button
+                onClick={onHome}
+                className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors flex-shrink-0"
+                aria-label="Home"
+              >
+                <Home className="w-5 h-5 text-secondary-600" />
+              </button>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-secondary-500">Section</p>
+                <h1 className="text-xl font-semibold text-secondary-900">Add Call Credits</h1>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -131,7 +135,7 @@ const WalletTopUp = ({ onBack, onHome }) => {
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-xs text-secondary-500">Amount payable: <span className="font-semibold text-secondary-900">{formatCurrency(selectedAmount)}</span></p>
-            <button className="btn-primary inline-flex items-center space-x-2">
+            <button className="btn-primary inline-flex items-center justify-center space-x-2 w-full sm:w-auto">
               <CreditCard className="w-4 h-4" />
               <span>Pay & Add Credits</span>
             </button>

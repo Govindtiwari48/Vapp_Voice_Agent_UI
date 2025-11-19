@@ -162,7 +162,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
               <button
@@ -622,11 +622,11 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
           )}
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onBack}
-              className="btn-secondary flex items-center space-x-2"
+              className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto"
             >
               <X className="w-4 h-4" />
               <span>Cancel</span>
@@ -634,7 +634,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
             >
               <Save className="w-4 h-4" />
               <span>{isSubmitting ? 'Creating...' : 'Create Campaign'}</span>

@@ -49,7 +49,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
               <button
@@ -81,7 +81,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
           {/* Left Column - Main Info */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Call Overview */}
@@ -253,12 +253,12 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               </div>
               
               <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="bg-secondary-50 p-3 sm:p-4 rounded-lg lg:col-span-2">
-                  <pre className="text-xs sm:text-sm text-secondary-700 whitespace-pre-wrap font-sans leading-relaxed overflow-x-auto">
+                <div className="bg-secondary-50 p-3 sm:p-4 rounded-lg lg:col-span-2 overflow-x-auto">
+                  <pre className="text-xs sm:text-sm text-secondary-700 whitespace-pre-wrap font-sans leading-relaxed">
                     {call.transcript}
                   </pre>
                 </div>
-                <div className="bg-white border border-secondary-200 rounded-lg p-4 space-y-3">
+                <div className="bg-white border border-secondary-200 rounded-lg p-3 sm:p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-secondary-900">Conversation Summary</h3>
                     <MessageSquare className="w-4 h-4 text-primary-600" />

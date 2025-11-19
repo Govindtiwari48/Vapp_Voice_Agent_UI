@@ -72,7 +72,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
               <button
@@ -135,29 +135,31 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
         <div className="card p-4 sm:p-5 mb-4 sm:mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-xs uppercase tracking-wide text-secondary-500">Allocated DID Number</p>
-              <p className="text-xl font-semibold text-secondary-900">{campaign.allocatedDid || 'Not assigned'}</p>
+              <p className="text-lg sm:text-xl font-semibold text-secondary-900 break-words">{campaign.allocatedDid || 'Not assigned'}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {filterOptions.map((filter) => (
-                <button
-                  key={filter.value}
-                  onClick={() => setActiveFilter(filter.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide border ${
-                    activeFilter === filter.value
-                      ? 'bg-primary-600 text-white border-primary-600'
-                      : 'border-secondary-200 text-secondary-600 hover:text-secondary-900'
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="flex flex-wrap gap-2">
+                {filterOptions.map((filter) => (
+                  <button
+                    key={filter.value}
+                    onClick={() => setActiveFilter(filter.value)}
+                    className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation ${
+                      activeFilter === filter.value
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'border-secondary-200 text-secondary-600 hover:text-secondary-900 active:bg-secondary-50'
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+              <button className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto">
+                <Download className="w-4 h-4" />
+                <span>Download XLSX</span>
+              </button>
             </div>
-            <button className="btn-secondary inline-flex items-center space-x-2 text-sm">
-              <Download className="w-4 h-4" />
-              <span>Download XLSX</span>
-            </button>
           </div>
         </div>
 

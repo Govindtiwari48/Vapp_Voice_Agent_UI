@@ -7,7 +7,7 @@ const CampaignList = ({ type, campaigns, onSelectCampaign, onBack, onHome, onCre
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
       <div className="bg-white border-b border-secondary-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
               <button
