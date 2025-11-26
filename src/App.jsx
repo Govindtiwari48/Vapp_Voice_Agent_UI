@@ -82,12 +82,18 @@ function App() {
   }
 
   const handleSaveCampaign = async (campaignData) => {
+    console.log('=== HANDLE SAVE CAMPAIGN CALLED ===')
+    console.log('Campaign Data Received:', campaignData)
+    
     // Generate a unique ID for the new campaign
     const campaignType = campaignData.campaignType
+    console.log('Campaign Type:', campaignType)
     const existingCampaigns = campaigns[campaignType] || []
+    console.log('Existing Campaigns Count:', existingCampaigns.length)
     const newId = campaignType === 'incoming'
       ? `INC${String(existingCampaigns.length + 1).padStart(3, '0')}`
       : `OUT${String(existingCampaigns.length + 1).padStart(3, '0')}`
+    console.log('New Campaign ID:', newId)
 
     // Create the new campaign object
     const newCampaign = {
@@ -110,18 +116,28 @@ function App() {
         callSchedule: campaignData.callSchedule,
         voiceAgentSettings: campaignData.voiceAgentSettings,
         leadQualification: campaignData.leadQualification,
-        integrationSettings: campaignData.integrationSettings
+        integrationSettings: campaignData.integrationSettings,
+        phoneNumbers: campaignData.phoneNumbers || [] // Store phone numbers
       }
     }
 
-    // Update campaigns state
-    setCampaigns(prev => ({
-      ...prev,
-      [campaignType]: [...prev[campaignType], newCampaign]
-    }))
+    console.log('New Campaign Object:', newCampaign)
+    console.log('Phone Numbers in Campaign:', newCampaign.config.phoneNumbers)
 
+    // Update campaigns state
+    setCampaigns(prev => {
+      const updated = {
+        ...prev,
+        [campaignType]: [...prev[campaignType], newCampaign]
+      }
+      console.log('Updated Campaigns State:', updated)
+      return updated
+    })
+
+    console.log('Campaign saved successfully, navigating to campaigns list')
     // Navigate back to campaigns list
     setView('campaigns')
+    console.log('=== HANDLE SAVE CAMPAIGN COMPLETED ===')
   }
 
   const handleToggleCampaignStatus = (campaignId, newStatus) => {
