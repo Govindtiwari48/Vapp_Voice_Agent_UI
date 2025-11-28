@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import CampaignList from './components/CampaignList'
 import CallLogs from './components/CallLogs'
@@ -18,10 +19,15 @@ import {
   Wallet,
   Phone,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react'
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Check if user was previously authenticated (stored in localStorage)
+    return localStorage.getItem('isAuthenticated') === 'true'
+  })
   const [view, setView] = useState('dashboardOverview') // dashboard, campaigns, callLogs, callDetails, createCampaign
   const [selectedCampaignType, setSelectedCampaignType] = useState(null) // incoming or outgoing
   const [selectedCampaign, setSelectedCampaign] = useState(null)
@@ -238,6 +244,29 @@ function App() {
 
   const activeNavId = getActiveNavId()
 
+  const handleLogin = () => {
+    // For now, accept any login
+    // Later this will be replaced with actual backend authentication
+    setIsAuthenticated(true)
+    localStorage.setItem('isAuthenticated', 'true')
+  }
+
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    localStorage.removeItem('isAuthenticated')
+    // Reset all state when logging out
+    setView('dashboardOverview')
+    setSelectedCampaignType(null)
+    setSelectedCampaign(null)
+    setSelectedCall(null)
+    setIsMobileMenuOpen(false)
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />
+  }
+
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Mobile Menu Button */}
@@ -279,27 +308,40 @@ function App() {
           </div>
         </div>
 
-        <nav className="p-3 sm:p-4 space-y-1">
-          {navigationItems.map((item) => {
-            const Icon = item.icon
-            const isActive = activeNavId === item.id
-            return (
-              <button
-                key={item.id}
-                onClick={item.action}
-                className={`w-full flex items-center space-x-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all duration-200 relative touch-manipulation ${isActive
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-secondary-700 hover:bg-secondary-50 hover:text-secondary-900'
-                  }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r"></div>
-                )}
-                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-600' : 'text-secondary-500'}`} />
-                <span className="flex-1 text-left">{item.label}</span>
-              </button>
-            )
-          })}
+        <nav className="p-3 sm:p-4 space-y-1 flex flex-col h-[calc(100vh-120px)]">
+          <div className="flex-1">
+            {navigationItems.map((item) => {
+              const Icon = item.icon
+              const isActive = activeNavId === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={item.action}
+                  className={`w-full flex items-center space-x-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all duration-200 relative touch-manipulation ${isActive
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-secondary-700 hover:bg-secondary-50 hover:text-secondary-900'
+                    }`}
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r"></div>
+                  )}
+                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-600' : 'text-secondary-500'}`} />
+                  <span className="flex-1 text-left">{item.label}</span>
+                </button>
+              )
+            })}
+          </div>
+          
+          {/* Logout Button */}
+          <div className="pt-4 mt-auto border-t border-secondary-200">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center space-x-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all duration-200 text-secondary-700 hover:bg-red-50 hover:text-red-700 touch-manipulation"
+            >
+              <LogOut className="w-5 h-5 flex-shrink-0 text-secondary-500" />
+              <span className="flex-1 text-left">Logout</span>
+            </button>
+          </div>
         </nav>
       </aside>
 
