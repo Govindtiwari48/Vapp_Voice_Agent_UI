@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import CampaignList from './components/CampaignList'
 import CallLogs from './components/CallLogs'
@@ -10,6 +9,8 @@ import DashboardOverview from './components/DashboardOverview'
 import ProjectTraining from './components/ProjectTraining'
 import ApiDocs from './components/ApiDocs'
 import WalletTopUp from './components/WalletTopUp'
+import Login from './components/Login'
+import { isAuthenticated, getUser, clearAuth } from './api/auth'
 import {
   LayoutGrid,
   GraduationCap,
@@ -24,16 +25,50 @@ import {
 } from 'lucide-react'
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Check if user was previously authenticated (stored in localStorage)
-    return localStorage.getItem('isAuthenticated') === 'true'
-  })
+  const [isAuthenticatedState, setIsAuthenticatedState] = useState(false)
+  const [user, setUser] = useState(null)
   const [view, setView] = useState('dashboardOverview') // dashboard, campaigns, callLogs, callDetails, createCampaign
   const [selectedCampaignType, setSelectedCampaignType] = useState(null) // incoming or outgoing
   const [selectedCampaign, setSelectedCampaign] = useState(null)
   const [selectedCall, setSelectedCall] = useState(null)
   const [campaigns, setCampaigns] = useState(initialCampaigns)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = () => {
+      if (isAuthenticated()) {
+        const userData = getUser()
+        if (userData) {
+          setIsAuthenticatedState(true)
+          setUser(userData)
+        } else {
+          clearAuth()
+          setIsAuthenticatedState(false)
+        }
+      } else {
+        setIsAuthenticatedState(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  // Handle successful login
+  const handleLogin = (userData) => {
+    setIsAuthenticatedState(true)
+    setUser(userData)
+  }
+
+  // Handle logout
+  const handleLogout = () => {
+    clearAuth()
+    setIsAuthenticatedState(false)
+    setUser(null)
+    setView('dashboardOverview')
+    setSelectedCampaignType(null)
+    setSelectedCampaign(null)
+    setSelectedCall(null)
+  }
 
   const handleSelectCampaignType = (type) => {
     setSelectedCampaignType(type)
@@ -88,18 +123,12 @@ function App() {
   }
 
   const handleSaveCampaign = async (campaignData) => {
-    console.log('=== HANDLE SAVE CAMPAIGN CALLED ===')
-    console.log('Campaign Data Received:', campaignData)
-    
     // Generate a unique ID for the new campaign
     const campaignType = campaignData.campaignType
-    console.log('Campaign Type:', campaignType)
     const existingCampaigns = campaigns[campaignType] || []
-    console.log('Existing Campaigns Count:', existingCampaigns.length)
     const newId = campaignType === 'incoming'
       ? `INC${String(existingCampaigns.length + 1).padStart(3, '0')}`
       : `OUT${String(existingCampaigns.length + 1).padStart(3, '0')}`
-    console.log('New Campaign ID:', newId)
 
     // Create the new campaign object
     const newCampaign = {
@@ -122,28 +151,18 @@ function App() {
         callSchedule: campaignData.callSchedule,
         voiceAgentSettings: campaignData.voiceAgentSettings,
         leadQualification: campaignData.leadQualification,
-        integrationSettings: campaignData.integrationSettings,
-        phoneNumbers: campaignData.phoneNumbers || [] // Store phone numbers
+        integrationSettings: campaignData.integrationSettings
       }
     }
 
-    console.log('New Campaign Object:', newCampaign)
-    console.log('Phone Numbers in Campaign:', newCampaign.config.phoneNumbers)
-
     // Update campaigns state
-    setCampaigns(prev => {
-      const updated = {
-        ...prev,
-        [campaignType]: [...prev[campaignType], newCampaign]
-      }
-      console.log('Updated Campaigns State:', updated)
-      return updated
-    })
+    setCampaigns(prev => ({
+      ...prev,
+      [campaignType]: [...prev[campaignType], newCampaign]
+    }))
 
-    console.log('Campaign saved successfully, navigating to campaigns list')
     // Navigate back to campaigns list
     setView('campaigns')
-    console.log('=== HANDLE SAVE CAMPAIGN COMPLETED ===')
   }
 
   const handleToggleCampaignStatus = (campaignId, newStatus) => {
@@ -244,26 +263,8 @@ function App() {
 
   const activeNavId = getActiveNavId()
 
-  const handleLogin = () => {
-    // For now, accept any login
-    // Later this will be replaced with actual backend authentication
-    setIsAuthenticated(true)
-    localStorage.setItem('isAuthenticated', 'true')
-  }
-
-  const handleLogout = () => {
-    setIsAuthenticated(false)
-    localStorage.removeItem('isAuthenticated')
-    // Reset all state when logging out
-    setView('dashboardOverview')
-    setSelectedCampaignType(null)
-    setSelectedCampaign(null)
-    setSelectedCall(null)
-    setIsMobileMenuOpen(false)
-  }
-
-  // Show login page if not authenticated
-  if (!isAuthenticated) {
+  // Show login screen if not authenticated
+  if (!isAuthenticatedState) {
     return <Login onLogin={handleLogin} />
   }
 
@@ -297,51 +298,58 @@ function App() {
           } lg:translate-x-0`}
       >
         <div className="p-4 sm:p-6 border-b border-secondary-200">
-          <div className="flex items-center space-x-3">
-            <div className="bg-primary-600 p-2.5 rounded-lg flex-shrink-0">
-              <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-semibold text-secondary-900">Voice Agent</h1>
-              <p className="text-xs text-secondary-500">Control Panel</p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary-600 p-2.5 rounded-lg flex-shrink-0">
+                <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg font-semibold text-secondary-900">Voice Agent</h1>
+                <p className="text-xs text-secondary-500">Control Panel</p>
+              </div>
             </div>
           </div>
+          {/* User Info and Logout */}
+          {user && (
+            <div className="flex items-center justify-between pt-4 border-t border-secondary-200">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-secondary-900 truncate">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-secondary-500 truncate">{user.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="ml-3 p-2 text-secondary-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
-        <nav className="p-3 sm:p-4 space-y-1 flex flex-col h-[calc(100vh-120px)]">
-          <div className="flex-1">
-            {navigationItems.map((item) => {
-              const Icon = item.icon
-              const isActive = activeNavId === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={item.action}
-                  className={`w-full flex items-center space-x-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all duration-200 relative touch-manipulation ${isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-secondary-700 hover:bg-secondary-50 hover:text-secondary-900'
-                    }`}
-                >
-                  {isActive && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r"></div>
-                  )}
-                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-600' : 'text-secondary-500'}`} />
-                  <span className="flex-1 text-left">{item.label}</span>
-                </button>
-              )
-            })}
-          </div>
-          
-          {/* Logout Button */}
-          <div className="pt-4 mt-auto border-t border-secondary-200">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all duration-200 text-secondary-700 hover:bg-red-50 hover:text-red-700 touch-manipulation"
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0 text-secondary-500" />
-              <span className="flex-1 text-left">Logout</span>
-            </button>
-          </div>
+        <nav className="p-3 sm:p-4 space-y-1">
+          {navigationItems.map((item) => {
+            const Icon = item.icon
+            const isActive = activeNavId === item.id
+            return (
+              <button
+                key={item.id}
+                onClick={item.action}
+                className={`w-full flex items-center space-x-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all duration-200 relative touch-manipulation ${isActive
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-secondary-700 hover:bg-secondary-50 hover:text-secondary-900'
+                  }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r"></div>
+                )}
+                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-600' : 'text-secondary-500'}`} />
+                <span className="flex-1 text-left">{item.label}</span>
+              </button>
+            )
+          })}
         </nav>
       </aside>
 
