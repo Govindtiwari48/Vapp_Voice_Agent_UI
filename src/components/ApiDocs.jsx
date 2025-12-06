@@ -20,29 +20,94 @@ const tabConfig = [
 ]
 
 const endpoints = [
+  // Health & System
   {
-    method: 'POST',
-    path: '/v1/webhooks/inbound',
-    description: 'Send completed inbound call payloads',
-    auth: 'HMAC + API Key'
-  },
-  {
-    method: 'POST',
-    path: '/v1/webhooks/outbound',
-    description: 'Receive outbound disposition + spend',
-    auth: 'HMAC + API Key'
+    method: 'GET',
+    path: '/health',
+    description: 'Health check endpoint',
+    auth: 'None',
+    category: 'System'
   },
   {
     method: 'GET',
-    path: '/v1/campaigns/:id/calls',
-    description: 'Fetch call level metrics with pagination',
-    auth: 'Bearer Token'
+    path: '/public-url',
+    description: 'Get public URL information',
+    auth: 'None',
+    category: 'System'
+  },
+  {
+    method: 'GET',
+    path: '/tools',
+    description: 'List available tools',
+    auth: 'None',
+    category: 'System'
+  },
+  {
+    method: 'GET',
+    path: '/twiml',
+    description: 'Get TwiML template',
+    auth: 'None',
+    category: 'System'
+  },
+  // Authentication
+  {
+    method: 'POST',
+    path: '/auth/signup',
+    description: 'Register a new user account',
+    auth: 'None',
+    category: 'Authentication'
   },
   {
     method: 'POST',
-    path: '/v1/campaigns/:id/calls',
-    description: 'Inject new leads for dialer',
-    auth: 'Bearer Token'
+    path: '/auth/login',
+    description: 'Login and get JWT token',
+    auth: 'None',
+    category: 'Authentication'
+  },
+  // Call Management
+  {
+    method: 'GET',
+    path: '/api/calls',
+    description: 'Get all calls with pagination and filters (date, status)',
+    auth: 'Bearer Token',
+    category: 'Calls'
+  },
+  // Dashboard Analytics
+  {
+    method: 'GET',
+    path: '/api/dashboard/overview',
+    description: 'Get dashboard overview metrics (weekly, monthly, total, custom)',
+    auth: 'Bearer Token',
+    category: 'Dashboard'
+  },
+  {
+    method: 'GET',
+    path: '/api/dashboard/metrics',
+    description: 'Get detailed dashboard metrics with breakdowns',
+    auth: 'Bearer Token',
+    category: 'Dashboard'
+  },
+  {
+    method: 'POST',
+    path: '/api/dashboard/export',
+    description: 'Export dashboard data to Excel (.xlsx)',
+    auth: 'Bearer Token',
+    category: 'Dashboard'
+  },
+  // Webhooks
+  {
+    method: 'POST',
+    path: '/webhook',
+    description: 'Receive webhook data (Twilio call events)',
+    auth: 'None',
+    category: 'Webhooks'
+  },
+  {
+    method: 'GET',
+    path: '/webhook',
+    description: 'Generic webhook endpoint for testing',
+    auth: 'None',
+    category: 'Webhooks'
   }
 ]
 
@@ -131,11 +196,10 @@ const ApiDocs = ({ onBack, onHome }) => {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wide ${
-                  activeTab === tab.key
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-secondary-100 text-secondary-600 hover:text-secondary-900'
-                }`}
+                className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wide ${activeTab === tab.key
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-secondary-100 text-secondary-600 hover:text-secondary-900'
+                  }`}
               >
                 {tab.title}
               </button>
@@ -148,7 +212,7 @@ const ApiDocs = ({ onBack, onHome }) => {
               <span>curl --request POST https://api.voice-agent.ai/v1/webhooks/{activeTab}</span>
             </div>
             <pre className="text-xs text-secondary-700 whitespace-pre-wrap font-mono">
-{`{
+              {`{
   "call_id": "CALL001",
   "campaign_id": "INC001",
   "disposition": "Successful",
@@ -176,24 +240,27 @@ const ApiDocs = ({ onBack, onHome }) => {
                       <th className="py-3 px-4">Method</th>
                       <th className="py-3 px-4">Path</th>
                       <th className="py-3 px-4 hidden sm:table-cell">Description</th>
-                      <th className="py-3 px-4 hidden md:table-cell">Auth</th>
+                      <th className="py-3 px-4 hidden md:table-cell">Category</th>
+                      <th className="py-3 px-4 hidden lg:table-cell">Auth</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-secondary-200 text-sm text-secondary-700">
-                    {endpoints.map((row) => (
-                      <tr key={row.path} className="hover:bg-secondary-50">
+                    {endpoints.map((row, index) => (
+                      <tr key={`${row.path}-${index}`} className="hover:bg-secondary-50">
                         <td className="py-3 px-4 font-mono text-xs whitespace-nowrap">
                           <span
-                            className={`px-2 py-1 rounded-md ${
-                              row.method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                            }`}
+                            className={`px-2 py-1 rounded-md ${row.method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                              }`}
                           >
                             {row.method}
                           </span>
                         </td>
                         <td className="py-3 px-4 font-mono text-xs text-secondary-900 break-all">{row.path}</td>
                         <td className="py-3 px-4 hidden sm:table-cell">{row.description}</td>
-                        <td className="py-3 px-4 hidden md:table-cell text-secondary-500">{row.auth}</td>
+                        <td className="py-3 px-4 hidden md:table-cell">
+                          <span className="badge badge-info">{row.category}</span>
+                        </td>
+                        <td className="py-3 px-4 hidden lg:table-cell text-secondary-500">{row.auth}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -201,23 +268,23 @@ const ApiDocs = ({ onBack, onHome }) => {
               </div>
             </div>
           </div>
-          
+
           {/* Mobile Card View for API Endpoints */}
           <div className="sm:hidden space-y-3 mt-4">
-            {endpoints.map((row) => (
-              <div key={row.path} className="card p-4 space-y-2">
-                <div className="flex items-center space-x-2">
+            {endpoints.map((row, index) => (
+              <div key={`${row.path}-mobile-${index}`} className="card p-4 space-y-2">
+                <div className="flex items-center justify-between">
                   <span
-                    className={`px-2 py-1 rounded-md text-xs font-mono ${
-                      row.method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                    }`}
+                    className={`px-2 py-1 rounded-md text-xs font-mono ${row.method === 'GET' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                      }`}
                   >
                     {row.method}
                   </span>
-                  <span className="text-xs font-semibold text-secondary-500">Auth: {row.auth}</span>
+                  <span className="badge badge-info text-xs">{row.category}</span>
                 </div>
                 <p className="font-mono text-xs text-secondary-900 break-all">{row.path}</p>
                 <p className="text-xs text-secondary-600">{row.description}</p>
+                <p className="text-xs text-secondary-500">Auth: {row.auth}</p>
               </div>
             ))}
           </div>

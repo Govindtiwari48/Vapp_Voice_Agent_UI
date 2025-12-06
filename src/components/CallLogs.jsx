@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
@@ -8,8 +8,10 @@ import {
   Home,
   IndianRupee,
   Phone,
-  XCircle
+  XCircle,
+  Loader2
 } from 'lucide-react'
+import { getCalls, getDateRange, downloadDashboardExport } from '../api'
 
 const filterOptions = [
   { label: 'Today', value: 'today' },
@@ -22,6 +24,107 @@ const filterOptions = [
 
 const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   const [activeFilter, setActiveFilter] = useState('today')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [calls, setCalls] = useState([])
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 20
+  })
+  const [downloading, setDownloading] = useState(false)
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false)
+  const [customDates, setCustomDates] = useState({
+    startDate: '',
+    endDate: ''
+  })
+
+  // Fetch calls when component mounts or filter changes
+  useEffect(() => {
+    fetchCalls()
+  }, [activeFilter, pagination.currentPage])
+
+  const fetchCalls = async () => {
+    setLoading(true)
+    setError('')
+    
+    try {
+      const params = {
+        page: pagination.currentPage,
+        limit: pagination.limit
+      }
+      
+      // Add date range based on active filter
+      if (activeFilter !== 'custom') {
+        const dateRange = getDateRange(activeFilter)
+        if (dateRange.startDate && dateRange.endDate) {
+          params.startDate = dateRange.startDate
+          params.endDate = dateRange.endDate
+        }
+      } else if (customDates.startDate && customDates.endDate) {
+        params.startDate = new Date(customDates.startDate).toISOString()
+        params.endDate = new Date(customDates.endDate).toISOString()
+      }
+      
+      const response = await getCalls(params)
+      
+      setCalls(response.calls || [])
+      setPagination({
+        currentPage: response.currentPage || 1,
+        totalPages: response.totalPages || 1,
+        totalRecords: response.totalRecords || 0,
+        limit: response.limit || 20
+      })
+    } catch (err) {
+      setError(err.message || 'Failed to load call logs')
+      console.error('Call logs error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter)
+    setPagination({ ...pagination, currentPage: 1 })
+    if (filter === 'custom') {
+      setShowCustomDatePicker(true)
+    }
+  }
+
+  const handleCustomDateSubmit = () => {
+    if (customDates.startDate && customDates.endDate) {
+      setShowCustomDatePicker(false)
+      setPagination({ ...pagination, currentPage: 1 })
+      fetchCalls()
+    }
+  }
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try {
+      const params = { range: activeFilter }
+      
+      if (activeFilter === 'custom' && customDates.startDate && customDates.endDate) {
+        params.startDate = customDates.startDate
+        params.endDate = customDates.endDate
+      }
+      
+      const filename = `call-logs-${activeFilter}-${new Date().toISOString().split('T')[0]}.xlsx`
+      await downloadDashboardExport(params, filename)
+    } catch (err) {
+      setError(err.message || 'Failed to download report')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const handlePageChange = (newPage) => {
+    setPagination({ ...pagination, currentPage: newPage })
+  }
+
+  // Use calls from API, fallback to campaign.callLogs if API fails
+  const displayCalls = calls.length > 0 ? calls : (campaign?.callLogs || [])
   const getStatusIcon = (status) => {
     switch (status) {
       case 'completed':
@@ -144,8 +247,9 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                 {filterOptions.map((filter) => (
                   <button
                     key={filter.value}
-                    onClick={() => setActiveFilter(filter.value)}
-                    className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation ${
+                    onClick={() => handleFilterChange(filter.value)}
+                    disabled={loading}
+                    className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation disabled:opacity-50 ${
                       activeFilter === filter.value
                         ? 'bg-primary-600 text-white border-primary-600'
                         : 'border-secondary-200 text-secondary-600 hover:text-secondary-900 active:bg-secondary-50'
@@ -155,15 +259,95 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                   </button>
                 ))}
               </div>
-              <button className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto">
-                <Download className="w-4 h-4" />
-                <span>Download XLSX</span>
+              <button 
+                onClick={handleDownload}
+                disabled={downloading || loading}
+                className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto disabled:opacity-50"
+              >
+                {downloading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                <span>{downloading ? 'Downloading...' : 'Download XLSX'}</span>
               </button>
             </div>
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="card p-4 bg-red-50 border border-red-200">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-800">Error loading call logs</p>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <button 
+                  onClick={fetchCalls}
+                  className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Date Picker */}
+        {showCustomDatePicker && activeFilter === 'custom' && (
+          <div className="card p-4 sm:p-6">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-4">Select Custom Date Range</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">Start Date</label>
+                <input
+                  type="date"
+                  value={customDates.startDate}
+                  onChange={(e) => setCustomDates({ ...customDates, startDate: e.target.value })}
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">End Date</label>
+                <input
+                  type="date"
+                  value={customDates.endDate}
+                  onChange={(e) => setCustomDates({ ...customDates, endDate: e.target.value })}
+                  className="input"
+                />
+              </div>
+            </div>
+            <div className="flex items-center space-x-3 mt-4">
+              <button 
+                onClick={handleCustomDateSubmit}
+                disabled={!customDates.startDate || !customDates.endDate}
+                className="btn-primary disabled:opacity-50"
+              >
+                Apply Date Range
+              </button>
+              <button 
+                onClick={() => setShowCustomDatePicker(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="card p-8">
+            <div className="flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+              <p className="ml-3 text-secondary-600">Loading call logs...</p>
+            </div>
+          </div>
+        )}
+
         {/* Call Logs - Desktop Table View */}
+        {!loading && (
         <div className="card hidden md:block">
           <div className="px-4 sm:px-6 py-4 border-b border-secondary-200">
             <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
@@ -201,7 +385,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-secondary-200">
-                {campaign.callLogs.map((call) => (
+                {displayCalls.map((call) => (
                   <tr
                     key={call.id}
                     onClick={() => onSelectCall(call)}
@@ -254,14 +438,16 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
             </table>
           </div>
         </div>
+        )}
 
         {/* Call Logs - Mobile Card View */}
+        {!loading && (
         <div className="md:hidden space-y-3">
           <div className="mb-3">
             <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
             <p className="text-xs text-secondary-500 mt-0.5">Tap on any call to view details</p>
           </div>
-          {campaign.callLogs.map((call) => (
+          {displayCalls.map((call) => (
             <div
               key={call.id}
               onClick={() => onSelectCall(call)}
@@ -310,6 +496,34 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
             </div>
           ))}
         </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && pagination.totalPages > 1 && (
+          <div className="card p-4 mt-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-secondary-600">
+                Showing page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalRecords} total records)
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                  className="btn-secondary px-3 py-2 text-sm disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                  className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
