@@ -307,6 +307,29 @@ export const downloadDashboardExport = async (exportParams, filename = 'dashboar
     }
 };
 
+/**
+ * Get analytics summary
+ * @returns {Promise<Object>} Analytics summary data
+ */
+export const getAnalyticsSummary = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/analytics/summary`, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        const result = await handleResponse(response);
+        
+        if (result.success && result.data) {
+            return result.data;
+        }
+        
+        throw new Error('Invalid analytics data format');
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
 // ============================================================================
 // WEBHOOK ENDPOINTS (for reference, typically called by external services)
 // ============================================================================

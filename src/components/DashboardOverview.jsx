@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, CalendarRange, Download, Home, Target, TrendingUp, Loader2, AlertCircle, Phone, Clock, PlayCircle } from 'lucide-react'
-import { getDashboardOverview, getDashboardMetrics, downloadDashboardExport, getCalls } from '../api'
+import { getDashboardOverview, getDashboardMetrics, downloadDashboardExport, getCalls, getAnalyticsSummary } from '../api'
 
 const DashboardOverview = ({ onBack, onHome }) => {
   const [range, setRange] = useState('total')
@@ -9,6 +9,7 @@ const DashboardOverview = ({ onBack, onHome }) => {
   const [overviewData, setOverviewData] = useState(null)
   const [metricsData, setMetricsData] = useState(null)
   const [callsData, setCallsData] = useState(null)
+  const [analyticsData, setAnalyticsData] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [customDates, setCustomDates] = useState({
@@ -48,16 +49,30 @@ const DashboardOverview = ({ onBack, onHome }) => {
         params.endDate = customDates.endDate
       }
       
-      // Fetch overview, metrics, and calls data
-      const [overview, metrics, calls] = await Promise.all([
-        getDashboardOverview(params).catch(() => null),
-        getDashboardMetrics(params).catch(() => null),
-        getCalls({ page: 1, limit: 10 }).catch(() => null)
+      // Fetch overview, metrics, calls, and analytics data
+      const [overview, metrics, calls, analytics] = await Promise.all([
+        getDashboardOverview(params).catch((err) => {
+          console.warn('Failed to fetch overview data:', err.message)
+          return null
+        }),
+        getDashboardMetrics(params).catch((err) => {
+          console.warn('Failed to fetch metrics data:', err.message)
+          return null
+        }),
+        getCalls({ page: 1, limit: 10 }).catch((err) => {
+          console.warn('Failed to fetch calls data:', err.message)
+          return null
+        }),
+        getAnalyticsSummary().catch((err) => {
+          console.warn('Failed to fetch analytics data:', err.message)
+          return null
+        })
       ])
       
       setOverviewData(overview)
       setMetricsData(metrics)
       setCallsData(calls)
+      setAnalyticsData(analytics)
     } catch (err) {
       setError(err.message || 'Failed to load dashboard data')
       console.error('Dashboard error:', err)
@@ -99,34 +114,43 @@ const DashboardOverview = ({ onBack, onHome }) => {
     }
   }
 
-  // Format metrics for display
+  // Helper function to format call duration from seconds to mm:ss
+  const formatAvgCallTime = (seconds) => {
+    if (!seconds) return '0:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Format metrics for display - prioritize analytics data
   const getFormattedMetrics = () => {
-    if (!overviewData) return []
+    const dataSource = analyticsData || overviewData
+    if (!dataSource) return []
     
     return [
       { 
         label: 'Total Calls', 
-        value: overviewData.totalCalls?.toLocaleString() || '0'
+        value: dataSource.totalCalls?.toLocaleString() || '0'
       },
       { 
         label: 'Total Minutes', 
-        value: overviewData.totalMinutes?.toLocaleString() || '0'
+        value: dataSource.totalMinutes?.toLocaleString() || '0'
       },
       { 
         label: 'Avg Call Time', 
-        value: overviewData.avgCallDuration || '0:00'
+        value: analyticsData ? formatAvgCallTime(analyticsData.avgCallTime) : (dataSource.avgCallDuration || '0:00')
       },
       { 
         label: 'Total Spend', 
-        value: overviewData.totalSpend ? `₹ ${overviewData.totalSpend.toLocaleString()}` : '₹ 0'
+        value: dataSource.totalSpend ? `₹ ${parseFloat(dataSource.totalSpend).toLocaleString()}` : '₹ 0'
       },
       { 
         label: 'Successful Calls', 
-        value: overviewData.successfulCalls?.toLocaleString() || '0'
+        value: dataSource.successfulCalls?.toLocaleString() || '0'
       },
       { 
         label: 'Success Rate', 
-        value: overviewData.successRate ? `${overviewData.successRate}%` : '0%'
+        value: dataSource.successRate ? `${dataSource.successRate}%` : '0%'
       }
     ]
   }
@@ -250,6 +274,16 @@ const DashboardOverview = ({ onBack, onHome }) => {
             <div>
               <p className="text-xs uppercase text-secondary-500 tracking-wide">Time Range</p>
               <h2 className="text-lg font-semibold text-secondary-900">Choose a preset view</h2>
+              {analyticsData?.dateRange && (
+                <div className="mt-1 flex items-center space-x-2">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Analytics Data
+                  </span>
+                  <p className="text-xs text-secondary-500">
+                    Data from {new Date(analyticsData.dateRange.start).toLocaleDateString()} to {new Date(analyticsData.dateRange.end).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {rangeLabels.map((label) => (
