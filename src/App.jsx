@@ -310,20 +310,31 @@ function App() {
           </div>
           {/* User Info and Logout */}
           {user && (
-            <div className="flex items-center justify-between pt-4 border-t border-secondary-200">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-secondary-900 truncate">
-                  {user.firstName} {user.lastName}
-                </p>
-                <p className="text-xs text-secondary-500 truncate">{user.email}</p>
+            <div className="pt-4 border-t border-secondary-200 space-y-3">
+              {/* User Profile Section */}
+              <div className="bg-secondary-50 rounded-lg p-3">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-secondary-900 truncate">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="text-xs text-secondary-600 truncate mt-0.5">{user.email}</p>
+                    <p className="text-xs text-secondary-500 truncate mt-0.5">{user.phone}</p>
+                    {user.lastLoginAt && (
+                      <p className="text-xs text-secondary-400 truncate mt-1">
+                        Last login: {new Date(user.lastLoginAt).toLocaleDateString()} {new Date(user.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="ml-2 p-1.5 text-secondary-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="ml-3 p-2 text-secondary-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
             </div>
           )}
         </div>
