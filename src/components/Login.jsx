@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Phone, AlertCircle, Loader2 } from 'lucide-react'
-import { signup, login, setToken, setUser } from '../api/auth'
+import { signup, login, setToken, setUser, updateLastActivity } from '../api/auth'
 
 function Login({ onLogin }) {
   const [isSignup, setIsSignup] = useState(false)
@@ -59,6 +59,7 @@ function Login({ onLogin }) {
           setToken(response.token)
           setUser(response.user)
           localStorage.setItem('isAuthenticated', 'true')
+          updateLastActivity()
           
           // Call onLogin callback to update parent state
           onLogin(response.user)

@@ -116,6 +116,23 @@ export const clearAuth = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('lastActivity');
+};
+
+/**
+ * Update last activity timestamp
+ */
+export const updateLastActivity = () => {
+    localStorage.setItem('lastActivity', Date.now().toString());
+};
+
+/**
+ * Get last activity timestamp
+ * @returns {number|null} Last activity timestamp or null
+ */
+export const getLastActivity = () => {
+    const lastActivity = localStorage.getItem('lastActivity');
+    return lastActivity ? parseInt(lastActivity, 10) : null;
 };
 
 /**

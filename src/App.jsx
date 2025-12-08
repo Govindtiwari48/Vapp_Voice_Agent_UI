@@ -9,7 +9,9 @@ import ProjectTraining from './components/ProjectTraining'
 import ApiDocs from './components/ApiDocs'
 import WalletTopUp from './components/WalletTopUp'
 import Login from './components/Login'
-import { isAuthenticated, getUser, clearAuth } from './api/auth'
+import SessionWarning from './components/SessionWarning'
+import { isAuthenticated, getUser, clearAuth, updateLastActivity } from './api/auth'
+import sessionManager from './utils/sessionManager'
 import {
   LayoutGrid,
   GraduationCap,
@@ -32,8 +34,10 @@ function App() {
   const [selectedCall, setSelectedCall] = useState(null)
   const [campaigns, setCampaigns] = useState({ incoming: [], outgoing: [] })
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showSessionWarning, setShowSessionWarning] = useState(false)
+  const [warningRemainingTime, setWarningRemainingTime] = useState(0)
 
-  // Check authentication on mount
+  // Check authentication on mount and set up session management
   useEffect(() => {
     const checkAuth = () => {
       if (isAuthenticated()) {
@@ -41,6 +45,14 @@ function App() {
         if (userData) {
           setIsAuthenticatedState(true)
           setUser(userData)
+          updateLastActivity()
+          // Start session monitoring
+          sessionManager.start(() => {
+            handleLogout()
+          }, (remainingTime) => {
+            setWarningRemainingTime(remainingTime)
+            setShowSessionWarning(true)
+          })
         } else {
           clearAuth()
           setIsAuthenticatedState(false)
@@ -50,16 +62,31 @@ function App() {
       }
     }
     checkAuth()
+
+    // Cleanup session manager on component unmount
+    return () => {
+      sessionManager.stop()
+    }
   }, [])
 
   // Handle successful login
   const handleLogin = (userData) => {
     setIsAuthenticatedState(true)
     setUser(userData)
+    updateLastActivity()
+    // Start session monitoring after login
+    sessionManager.start(() => {
+      handleLogout()
+    }, (remainingTime) => {
+      setWarningRemainingTime(remainingTime)
+      setShowSessionWarning(true)
+    })
   }
 
   // Handle logout
   const handleLogout = () => {
+    // Stop session monitoring
+    sessionManager.stop()
     clearAuth()
     setIsAuthenticatedState(false)
     setUser(null)
@@ -67,6 +94,20 @@ function App() {
     setSelectedCampaignType(null)
     setSelectedCampaign(null)
     setSelectedCall(null)
+    setShowSessionWarning(false)
+  }
+
+  // Handle extending session from warning dialog
+  const handleExtendSession = () => {
+    sessionManager.extendSession()
+    setShowSessionWarning(false)
+    updateLastActivity()
+  }
+
+  // Handle logout from warning dialog
+  const handleWarningLogout = () => {
+    setShowSessionWarning(false)
+    handleLogout()
   }
 
   const handleSelectCampaignType = (type) => {
@@ -426,6 +467,14 @@ function App() {
           />
         )}
       </main>
+      
+      {/* Session Warning Modal */}
+      <SessionWarning
+        isVisible={showSessionWarning}
+        onExtend={handleExtendSession}
+        onLogout={handleWarningLogout}
+        remainingTime={warningRemainingTime}
+      />
     </div>
   )
 }
