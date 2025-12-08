@@ -4,7 +4,6 @@ import CampaignList from './components/CampaignList'
 import CallLogs from './components/CallLogs'
 import CallDetails from './components/CallDetails'
 import CreateCampaign from './components/CreateCampaign'
-import { campaigns as initialCampaigns } from './data/dummyData'
 import DashboardOverview from './components/DashboardOverview'
 import ProjectTraining from './components/ProjectTraining'
 import ApiDocs from './components/ApiDocs'
@@ -31,7 +30,7 @@ function App() {
   const [selectedCampaignType, setSelectedCampaignType] = useState(null) // incoming or outgoing
   const [selectedCampaign, setSelectedCampaign] = useState(null)
   const [selectedCall, setSelectedCall] = useState(null)
-  const [campaigns, setCampaigns] = useState(initialCampaigns)
+  const [campaigns, setCampaigns] = useState({ incoming: [], outgoing: [] })
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // Check authentication on mount

@@ -123,8 +123,8 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     setPagination({ ...pagination, currentPage: newPage })
   }
 
-  // Use calls from API, fallback to campaign.callLogs if API fails
-  const displayCalls = calls.length > 0 ? calls : (campaign?.callLogs || [])
+  // Use calls from API only
+  const displayCalls = calls
   const getStatusIcon = (status) => {
     switch (status) {
       case 'completed':
@@ -204,7 +204,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                   )}
                 </div>
                 <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                  {campaign.id} • {campaign.callLogs.length} calls
+                  {campaign.id} • {pagination.totalRecords || calls.length} calls
                 </p>
               </div>
             </div>
@@ -496,6 +496,17 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
             </div>
           ))}
         </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && displayCalls.length === 0 && (
+          <div className="card p-8 text-center">
+            <div className="text-secondary-400 mb-4">
+              <Phone className="w-12 h-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-secondary-900 mb-2">No calls found</h3>
+            <p className="text-secondary-500">No calls match your current filter criteria. Try adjusting your date range or filters.</p>
+          </div>
         )}
 
         {/* Pagination Controls */}
