@@ -142,7 +142,26 @@ export const getCalls = async (params = {}) => {
             headers: createHeaders()
         });
 
-        return await handleResponse(response);
+        const result = await handleResponse(response);
+        
+        // Handle the new API response format
+        if (result.success && result.data) {
+            return {
+                calls: result.data.calls || [],
+                currentPage: result.data.pagination?.page || 1,
+                totalPages: result.data.pagination?.totalPages || 1,
+                totalRecords: result.data.pagination?.totalRecords || 0,
+                limit: result.data.pagination?.limit || 20
+            };
+        }
+        
+        return {
+            calls: [],
+            currentPage: 1,
+            totalPages: 1,
+            totalRecords: 0,
+            limit: 20
+        };
     } catch (error) {
         return handleError(error);
     }

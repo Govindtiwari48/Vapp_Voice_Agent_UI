@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, CalendarRange, Download, Home, Target, TrendingUp, Loader2, AlertCircle } from 'lucide-react'
-import { getDashboardOverview, getDashboardMetrics, downloadDashboardExport } from '../api'
+import { ArrowLeft, CalendarRange, Download, Home, Target, TrendingUp, Loader2, AlertCircle, Phone, Clock, PlayCircle } from 'lucide-react'
+import { getDashboardOverview, getDashboardMetrics, downloadDashboardExport, getCalls } from '../api'
 
 const DashboardOverview = ({ onBack, onHome }) => {
   const [range, setRange] = useState('total')
@@ -8,6 +8,7 @@ const DashboardOverview = ({ onBack, onHome }) => {
   const [error, setError] = useState('')
   const [overviewData, setOverviewData] = useState(null)
   const [metricsData, setMetricsData] = useState(null)
+  const [callsData, setCallsData] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [customDates, setCustomDates] = useState({
@@ -16,6 +17,18 @@ const DashboardOverview = ({ onBack, onHome }) => {
   })
 
   const rangeLabels = ['total', 'weekly', 'monthly', 'custom']
+
+  // Helper functions for call data
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
 
   // Fetch dashboard data when range changes
   useEffect(() => {
@@ -35,14 +48,16 @@ const DashboardOverview = ({ onBack, onHome }) => {
         params.endDate = customDates.endDate
       }
       
-      // Fetch both overview and detailed metrics
-      const [overview, metrics] = await Promise.all([
-        getDashboardOverview(params),
-        getDashboardMetrics(params)
+      // Fetch overview, metrics, and calls data
+      const [overview, metrics, calls] = await Promise.all([
+        getDashboardOverview(params).catch(() => null),
+        getDashboardMetrics(params).catch(() => null),
+        getCalls({ page: 1, limit: 10 }).catch(() => null)
       ])
       
       setOverviewData(overview)
       setMetricsData(metrics)
+      setCallsData(calls)
     } catch (err) {
       setError(err.message || 'Failed to load dashboard data')
       console.error('Dashboard error:', err)
@@ -335,6 +350,69 @@ const DashboardOverview = ({ onBack, onHome }) => {
                   <p className="text-sm text-secondary-500 text-center py-4">No data available</p>
                 )}
               </div>
+            </div>
+
+            {/* Recent Calls Section */}
+            <div className="card p-5 space-y-4 lg:col-span-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase text-secondary-500 tracking-wide">Latest Activity</p>
+                  <h3 className="text-lg font-semibold text-secondary-900">Recent Calls</h3>
+                </div>
+                <Phone className="w-5 h-5 text-primary-600" />
+              </div>
+              
+              {callsData?.calls?.length > 0 ? (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {callsData.calls.map((call) => (
+                    <div key={call._id} className="flex items-center justify-between border-b border-secondary-100 pb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            call.status === 'ANSWERED' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {call.status}
+                          </span>
+                          <span className="text-sm font-medium text-secondary-900">{call.cnum}</span>
+                        </div>
+                        <p className="text-xs text-secondary-500">
+                          {formatDate(call.start)} • VMN: {call.vmn}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-3 flex-shrink-0">
+                        <div className="text-right">
+                          <div className="flex items-center space-x-1 text-xs text-secondary-600">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatDuration(call.duration)}</span>
+                          </div>
+                          <p className="text-xs text-secondary-500">Duration</p>
+                        </div>
+                        {call.recordingUrl && (
+                          <button
+                            onClick={() => window.open(call.recordingUrl, '_blank')}
+                            className="p-1 hover:bg-primary-50 rounded-lg transition-colors"
+                            title="Play Recording"
+                          >
+                            <PlayCircle className="w-4 h-4 text-primary-600" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-secondary-500 text-center py-8">No calls available</p>
+              )}
+              
+              {callsData?.totalRecords > 10 && (
+                <div className="text-center pt-2 border-t border-secondary-100">
+                  <p className="text-xs text-secondary-500">
+                    Showing latest 10 of {callsData.totalRecords} total calls
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
