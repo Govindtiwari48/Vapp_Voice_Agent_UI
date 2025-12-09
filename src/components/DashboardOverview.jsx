@@ -874,7 +874,7 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
                 <p className="text-xs uppercase text-secondary-500 tracking-wide">Campaign Management</p>
                 <h3 className="text-lg font-semibold text-secondary-900">All Campaigns</h3>
               </div>
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3">
                 {/* Campaign Type Filter */}
                 <select
                   value={campaignTypeFilter}
