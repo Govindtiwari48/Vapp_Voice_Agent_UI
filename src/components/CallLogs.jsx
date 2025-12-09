@@ -12,6 +12,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { getCalls, getDateRange, downloadDashboardExport } from '../api'
+import StatusFilter from './StatusFilter'
 
 const filterOptions = [
   { label: 'Today', value: 'today' },
@@ -22,8 +23,18 @@ const filterOptions = [
   { label: 'Custom range', value: 'custom' }
 ]
 
+// Status filter options based on backend API
+const statusFilterOptions = [
+  { label: 'Answered', value: 'ANSWERED' },
+  { label: 'Busy', value: 'BUSY' },
+  { label: 'No Answer', value: 'NO ANSWER' },
+  { label: 'Failed', value: 'FAILED' },
+  { label: 'Cancelled', value: 'CANCELLED' }
+]
+
 const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   const [activeFilter, setActiveFilter] = useState('today')
+  const [statusFilter, setStatusFilter] = useState('') // Empty string means "All"
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [calls, setCalls] = useState([])
@@ -43,7 +54,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   // Fetch calls when component mounts or filter changes
   useEffect(() => {
     fetchCalls()
-  }, [activeFilter, pagination.currentPage])
+  }, [activeFilter, statusFilter, pagination.currentPage])
 
   const fetchCalls = async () => {
     setLoading(true)
@@ -65,6 +76,11 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
       } else if (customDates.startDate && customDates.endDate) {
         params.startDate = new Date(customDates.startDate).toISOString()
         params.endDate = new Date(customDates.endDate).toISOString()
+      }
+
+      // Add status filter if selected
+      if (statusFilter) {
+        params.status = statusFilter
       }
 
       const response = await getCalls(params)
@@ -104,6 +120,11 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     }
   }
 
+  const handleStatusFilterChange = (status) => {
+    setStatusFilter(status)
+    setPagination({ ...pagination, currentPage: 1 })
+  }
+
   const handleCustomDateSubmit = () => {
     if (customDates.startDate && customDates.endDate) {
       setShowCustomDatePicker(false)
@@ -135,31 +156,100 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     setPagination({ ...pagination, currentPage: newPage })
   }
 
-  // Use calls from API only
-  const displayCalls = calls
+  // Transform API call data to match UI expectations
+  const transformCallData = (call) => {
+    // Format duration from seconds to MM:SS
+    const formatDuration = (seconds) => {
+      if (!seconds) return '0:00'
+      const mins = Math.floor(seconds / 60)
+      const secs = seconds % 60
+      return `${mins}:${String(secs).padStart(2, '0')}`
+    }
+
+    // Format date and time from ISO string
+    const formatDateTime = (isoString) => {
+      if (!isoString) return { date: '—', time: '—' }
+      const date = new Date(isoString)
+      return {
+        date: date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+        time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+      }
+    }
+
+    const dateTime = formatDateTime(call.start)
+
+    return {
+      id: call._id || call.id,
+      phoneNumber: call.cnum || call.phoneNumber,
+      vmn: call.vmn,
+      date: dateTime.date,
+      time: dateTime.time,
+      duration: formatDuration(call.duration),
+      status: call.status,
+      exeno: call.exeno,
+      rfn: call.rfn,
+      recordingUrl: call.recordingUrl,
+      start: call.start,
+      end: call.end,
+      createdAt: call.createdAt,
+      // Legacy fields for backward compatibility
+      spendInr: call.spendInr || 0,
+      dispositionType: call.dispositionType,
+      leadQualification: call.leadQualification,
+      recommendedAction: call.recommendedAction
+    }
+  }
+
+  // Use calls from API only, transform them for display
+  const displayCalls = calls.map(transformCallData)
+
+  // Normalize status to handle both API format (ANSWERED) and legacy format (completed)
+  const normalizeStatus = (status) => {
+    if (!status) return ''
+    const upperStatus = status.toUpperCase()
+    // Map API status values to normalized values
+    if (upperStatus === 'ANSWERED' || upperStatus === 'COMPLETED') return 'answered'
+    if (upperStatus === 'NO ANSWER' || upperStatus === 'NO-ANSWER') return 'no-answer'
+    if (upperStatus === 'BUSY') return 'busy'
+    if (upperStatus === 'FAILED') return 'failed'
+    if (upperStatus === 'CANCELLED') return 'cancelled'
+    return status.toLowerCase()
+  }
+
   const getStatusIcon = (status) => {
-    switch (status) {
+    const normalized = normalizeStatus(status)
+    switch (normalized) {
+      case 'answered':
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-green-600" />
       case 'no-answer':
         return <XCircle className="w-4 h-4 text-red-600" />
       case 'busy':
         return <AlertCircle className="w-4 h-4 text-yellow-600" />
+      case 'failed':
+      case 'cancelled':
+        return <XCircle className="w-4 h-4 text-red-600" />
       default:
         return <Phone className="w-4 h-4 text-secondary-400" />
     }
   }
 
   const getStatusBadge = (status) => {
-    switch (status) {
+    const normalized = normalizeStatus(status)
+    switch (normalized) {
+      case 'answered':
       case 'completed':
-        return <span className="badge badge-success">Completed</span>
+        return <span className="badge badge-success">Answered</span>
       case 'no-answer':
         return <span className="badge badge-error">No Answer</span>
       case 'busy':
         return <span className="badge badge-warning">Busy</span>
+      case 'failed':
+        return <span className="badge badge-error">Failed</span>
+      case 'cancelled':
+        return <span className="badge badge-warning">Cancelled</span>
       default:
-        return <span className="badge">Unknown</span>
+        return <span className="badge">{status || 'Unknown'}</span>
     }
   }
 
@@ -254,34 +344,48 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
               <p className="text-xs uppercase tracking-wide text-secondary-500">Allocated DID Number</p>
               <p className="text-lg sm:text-xl font-semibold text-secondary-900 break-words">{campaign.allocatedDid || 'Not assigned'}</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="flex flex-wrap gap-2">
-                {filterOptions.map((filter) => (
-                  <button
-                    key={filter.value}
-                    onClick={() => handleFilterChange(filter.value)}
-                    disabled={loading}
-                    className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation disabled:opacity-50 ${activeFilter === filter.value
+            <div className="flex flex-col gap-3">
+              {/* Filters Row */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex flex-wrap gap-2">
+                  {filterOptions.map((filter) => (
+                    <button
+                      key={filter.value}
+                      onClick={() => handleFilterChange(filter.value)}
+                      disabled={loading}
+                      className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation disabled:opacity-50 ${activeFilter === filter.value
                         ? 'bg-primary-600 text-white border-primary-600'
                         : 'border-secondary-200 text-secondary-600 hover:text-secondary-900 active:bg-secondary-50'
-                      }`}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
+                        }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+                <StatusFilter
+                  options={statusFilterOptions}
+                  selectedValue={statusFilter}
+                  onChange={handleStatusFilterChange}
+                  label="Filter by Status"
+                  disabled={loading}
+                  className="flex-shrink-0"
+                />
               </div>
-              <button
-                onClick={handleDownload}
-                disabled={downloading || loading}
-                className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto disabled:opacity-50"
-              >
-                {downloading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-                <span>{downloading ? 'Downloading...' : 'Download XLSX'}</span>
-              </button>
+              {/* Download Button Row */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading || loading}
+                  className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto disabled:opacity-50"
+                >
+                  {downloading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{downloading ? 'Downloading...' : 'Download XLSX'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -568,8 +672,8 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
                           className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${pagination.currentPage === pageNum
-                              ? 'bg-primary-600 text-white border-primary-600'
-                              : 'bg-white text-secondary-700 border-secondary-300 hover:bg-secondary-50'
+                            ? 'bg-primary-600 text-white border-primary-600'
+                            : 'bg-white text-secondary-700 border-secondary-300 hover:bg-secondary-50'
                             }`}
                         >
                           {pageNum}

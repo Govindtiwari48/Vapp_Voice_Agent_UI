@@ -1,9 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, CalendarRange, Download, Home, Target, TrendingUp, Loader2, AlertCircle, Phone, Clock, PlayCircle } from 'lucide-react'
 import { getDashboardOverview, getDashboardMetrics, downloadDashboardExport, getCalls, getAnalyticsSummary } from '../api'
+import StatusFilter from './StatusFilter'
+
+// Status filter options based on backend API
+const statusFilterOptions = [
+  { label: 'Answered', value: 'ANSWERED' },
+  { label: 'Busy', value: 'BUSY' },
+  { label: 'No Answer', value: 'NO ANSWER' },
+  { label: 'Failed', value: 'FAILED' },
+  { label: 'Cancelled', value: 'CANCELLED' }
+]
 
 const DashboardOverview = ({ onBack, onHome }) => {
   const [range, setRange] = useState('total')
+  const [statusFilter, setStatusFilter] = useState('') // Empty string means "All"
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [overviewData, setOverviewData] = useState(null)
@@ -40,10 +51,17 @@ const DashboardOverview = ({ onBack, onHome }) => {
 
   const fetchCallsData = async () => {
     try {
-      const calls = await getCalls({
+      const params = {
         page: callsPagination.currentPage,
         limit: callsPagination.limit
-      })
+      }
+
+      // Add status filter if selected
+      if (statusFilter) {
+        params.status = statusFilter
+      }
+
+      const calls = await getCalls(params)
 
       if (calls) {
         const totalRecords = calls.totalRecords || 0
@@ -69,12 +87,12 @@ const DashboardOverview = ({ onBack, onHome }) => {
     }
   }
 
-  // Fetch dashboard data when range changes
+  // Fetch dashboard data when range or status filter changes
   useEffect(() => {
     isRangeChanging.current = true
     setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
     fetchDashboardData()
-  }, [range])
+  }, [range, statusFilter])
 
   // Fetch calls when pagination changes (but not when range is changing)
   useEffect(() => {
@@ -112,7 +130,11 @@ const DashboardOverview = ({ onBack, onHome }) => {
           console.warn('Failed to fetch metrics data:', err.message)
           return null
         }),
-        getCalls({ page: callsPagination.currentPage, limit: callsPagination.limit }).catch((err) => {
+        getCalls({
+          page: callsPagination.currentPage,
+          limit: callsPagination.limit,
+          ...(statusFilter ? { status: statusFilter } : {})
+        }).catch((err) => {
           console.warn('Failed to fetch calls data:', err.message)
           return null
         }),
@@ -373,8 +395,8 @@ const DashboardOverview = ({ onBack, onHome }) => {
                   onClick={() => handleRangeChange(label)}
                   disabled={loading}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide disabled:opacity-50 ${range === label
-                      ? 'bg-primary-600 text-white shadow-sm'
-                      : 'bg-secondary-100 text-secondary-600 hover:text-secondary-900'
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : 'bg-secondary-100 text-secondary-600 hover:text-secondary-900'
                     }`}
                 >
                   {label}
@@ -468,12 +490,25 @@ const DashboardOverview = ({ onBack, onHome }) => {
 
             {/* Recent Calls Section */}
             <div className="card p-5 space-y-4 lg:col-span-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase text-secondary-500 tracking-wide">Latest Activity</p>
                   <h3 className="text-lg font-semibold text-secondary-900">Recent Calls</h3>
                 </div>
-                <Phone className="w-5 h-5 text-primary-600" />
+                <div className="flex items-center gap-3">
+                  <StatusFilter
+                    options={statusFilterOptions}
+                    selectedValue={statusFilter}
+                    onChange={(value) => {
+                      setStatusFilter(value)
+                      setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
+                    }}
+                    label="Filter by Status"
+                    disabled={loading}
+                    className="flex-shrink-0"
+                  />
+                  <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                </div>
               </div>
 
               {callsData?.calls?.length > 0 ? (
@@ -484,12 +519,12 @@ const DashboardOverview = ({ onBack, onHome }) => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.status === 'ANSWERED'
-                                ? 'bg-green-100 text-green-800'
-                                : call.status === 'BUSY'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : call.status === 'NO_ANSWER'
-                                    ? 'bg-orange-100 text-orange-800'
-                                    : 'bg-red-100 text-red-800'
+                              ? 'bg-green-100 text-green-800'
+                              : call.status === 'BUSY'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : call.status === 'NO_ANSWER'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-red-100 text-red-800'
                               }`}>
                               {call.status}
                             </span>
