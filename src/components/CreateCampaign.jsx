@@ -1,35 +1,38 @@
 import { useState } from 'react'
 import { ArrowLeft, Home, Save, X, PhoneIncoming, PhoneOutgoing, Info, Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react'
+import { createCampaign } from '../api'
 
 const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
+  const isIncoming = type === 'incoming'
+  const campaignType = isIncoming ? 'inbound' : 'outbound'
+
   const [formData, setFormData] = useState({
     name: '',
     category: '',
     description: '',
-    status: 'active', // active or paused
-    campaignType: type, // incoming or outgoing
-    // Additional fields for campaign configuration
+    status: 'active',
+    campaignType: campaignType,
+    // Outbound only fields
     startDate: '',
     endDate: '',
-    timeZone: 'America/New_York',
-    maxCallsPerDay: '',
-    callSchedule: {
-      enabled: false,
-      startTime: '09:00',
-      endTime: '17:00',
-      daysOfWeek: []
-    },
-    // Voice agent settings
-    voiceAgentSettings: {
-      agentType: 'neural',
-      language: 'en-US'
-    },
-    // Lead qualification settings
-    leadQualification: {
-      enabled: true,
-      requiredFields: [],
-      qualificationCriteria: ''
-    },
+    phoneNumbers: [],
+    // Settings
+    settings: {
+      callTimeout: isIncoming ? 45 : 30,
+      // Outbound only settings
+      maxCalls: '',
+      retryAttempts: '',
+      workingHours: {
+        start: '09:00',
+        end: '18:00',
+        timezone: 'Asia/Kolkata'
+      },
+      voiceSettings: {
+        voice: 'ash',
+        speed: 1,
+        language: 'hi-IN'
+      }
+    }
   })
 
   const [errors, setErrors] = useState({})
@@ -40,6 +43,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
   const [csvFileName, setCsvFileName] = useState('')
 
   const categories = [
+    'Real Estate',
     'Property Inquiry',
     'Follow-up',
     'Appointment Scheduling',
@@ -51,27 +55,60 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     'Other'
   ]
 
-  const daysOfWeek = [
-    { value: 'monday', label: 'Monday' },
-    { value: 'tuesday', label: 'Tuesday' },
-    { value: 'wednesday', label: 'Wednesday' },
-    { value: 'thursday', label: 'Thursday' },
-    { value: 'friday', label: 'Friday' },
-    { value: 'saturday', label: 'Saturday' },
-    { value: 'sunday', label: 'Sunday' }
+  const timezones = [
+    { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST)' },
+    { value: 'America/New_York', label: 'America/New_York (EST)' },
+    { value: 'America/Chicago', label: 'America/Chicago (CST)' },
+    { value: 'America/Denver', label: 'America/Denver (MST)' },
+    { value: 'America/Los_Angeles', label: 'America/Los_Angeles (PST)' },
+    { value: 'UTC', label: 'UTC' }
+  ]
+
+  const voices = [
+    { value: 'ash', label: 'Ash' },
+    { value: 'alloy', label: 'Alloy' },
+    { value: 'echo', label: 'Echo' },
+    { value: 'fable', label: 'Fable' },
+    { value: 'onyx', label: 'Onyx' },
+    { value: 'nova', label: 'Nova' },
+    { value: 'shimmer', label: 'Shimmer' }
+  ]
+
+  const languages = [
+    { value: 'hi-IN', label: 'Hindi (India)' },
+    { value: 'en-US', label: 'English (US)' },
+    { value: 'en-GB', label: 'English (UK)' },
+    { value: 'es-ES', label: 'Spanish' },
+    { value: 'fr-FR', label: 'French' },
+    { value: 'de-DE', label: 'German' }
   ]
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     if (name.includes('.')) {
-      const [parent, child] = name.split('.')
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: type === 'checkbox' ? checked : value
-        }
-      }))
+      const parts = name.split('.')
+      if (parts.length === 2) {
+        const [parent, child] = parts
+        setFormData(prev => ({
+          ...prev,
+          [parent]: {
+            ...prev[parent],
+            [child]: type === 'checkbox' ? checked : value
+          }
+        }))
+      } else if (parts.length === 3) {
+        const [parent, child, grandchild] = parts
+        setFormData(prev => ({
+          ...prev,
+          [parent]: {
+            ...prev[parent],
+            [child]: {
+              ...prev[parent][child],
+              [grandchild]: type === 'checkbox' ? checked : value
+            }
+          }
+        }))
+      }
     } else {
       setFormData(prev => ({
         ...prev,
@@ -88,37 +125,20 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     }
   }
 
-  const handleDayToggle = (day) => {
-    setFormData(prev => ({
-      ...prev,
-      callSchedule: {
-        ...prev.callSchedule,
-        daysOfWeek: prev.callSchedule.daysOfWeek.includes(day)
-          ? prev.callSchedule.daysOfWeek.filter(d => d !== day)
-          : [...prev.callSchedule.daysOfWeek, day]
-      }
-    }))
-  }
-
   const validatePhoneNumber = (phone) => {
-    // Check if it's exactly 10 digits
-    const phoneRegex = /^\d{10}$/
+    // Check if it's a valid phone number (10 digits or with country code)
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/
     return phoneRegex.test(phone.trim())
   }
 
   const handleCsvUpload = (e) => {
-    console.log('=== CSV UPLOAD STARTED ===')
     const file = e.target.files[0]
-    console.log('Selected File:', file)
 
     if (!file) {
-      console.log('No file selected')
       return
     }
 
-    // Check file extension
     if (!file.name.toLowerCase().endsWith('.csv')) {
-      console.log('Invalid file type:', file.name)
       setCsvError('Please upload a CSV file (.csv format)')
       setCsvFile(null)
       setCsvFileName('')
@@ -126,78 +146,59 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
       return
     }
 
-    console.log('File is valid CSV:', file.name)
     setCsvFileName(file.name)
     setCsvError('')
     setCsvFile(file)
 
-    // Read and parse CSV
     const reader = new FileReader()
     reader.onload = (event) => {
-      console.log('=== CSV FILE READ ===')
       try {
         const text = event.target.result
-        console.log('CSV Text Length:', text.length)
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
-        console.log('Total Lines Found:', lines.length)
-        console.log('First 5 Lines:', lines.slice(0, 5))
 
         if (lines.length === 0) {
-          console.log('CSV file is empty')
           setCsvError('CSV file is empty')
           setPhoneNumbers([])
           return
         }
 
-        // Check if first line looks like a header (contains non-numeric characters)
+        // Check if first line looks like a header
         const firstLine = lines[0]
-        console.log('First Line:', firstLine)
-        if (!/^\d+$/.test(firstLine)) {
-          console.log('First line appears to be a header')
-          setCsvError('CSV file should not have a header row. First line should contain a 10-digit number.')
+        if (!/^\+?[1-9]\d{1,14}$/.test(firstLine)) {
+          setCsvError('CSV file should not have a header row. First line should contain a phone number.')
           setPhoneNumbers([])
           return
         }
 
-        // Validate all lines are 10-digit numbers
+        // Validate all lines are phone numbers
         const validNumbers = []
         const invalidLines = []
 
         lines.forEach((line, index) => {
-          if (validatePhoneNumber(line)) {
-            validNumbers.push(line.trim())
+          const cleaned = line.replace(/[^\d+]/g, '')
+          if (validatePhoneNumber(cleaned)) {
+            // Format with + if not present and starts with country code
+            const formatted = cleaned.startsWith('+') ? cleaned : (cleaned.length === 10 ? `+91${cleaned}` : `+${cleaned}`)
+            validNumbers.push(formatted)
           } else {
             invalidLines.push(index + 1)
           }
         })
 
-        console.log('Valid Numbers Count:', validNumbers.length)
-        console.log('Invalid Lines:', invalidLines)
-
         if (invalidLines.length > 0) {
-          console.log('Invalid phone numbers found')
-          setCsvError(`Invalid phone numbers found on lines: ${invalidLines.join(', ')}. Each line must contain exactly 10 digits.`)
+          setCsvError(`Invalid phone numbers found on lines: ${invalidLines.join(', ')}. Each line must contain a valid phone number.`)
           setPhoneNumbers([])
           return
         }
 
         if (validNumbers.length === 0) {
-          console.log('No valid phone numbers found')
           setCsvError('No valid phone numbers found in the CSV file')
           setPhoneNumbers([])
           return
         }
 
-        console.log('=== CSV VALIDATION SUCCESS ===')
-        console.log('Valid Phone Numbers:', validNumbers)
         setPhoneNumbers(validNumbers)
         setCsvError('')
-        // Update formData with phone numbers
-        setFormData(prev => ({
-          ...prev,
-          phoneNumbers: validNumbers
-        }))
-        console.log('Phone numbers added to formData')
       } catch (error) {
         console.error('Error parsing CSV:', error)
         setCsvError('Error reading CSV file. Please check the file format.')
@@ -206,13 +207,11 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     }
 
     reader.onerror = () => {
-      console.error('FileReader error')
       setCsvError('Error reading file. Please try again.')
       setPhoneNumbers([])
     }
 
     reader.readAsText(file)
-    console.log('File reading started')
   }
 
   const handleRemoveCsv = () => {
@@ -220,13 +219,6 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     setCsvFileName('')
     setPhoneNumbers([])
     setCsvError('')
-    // Remove phone numbers from formData
-    setFormData(prev => {
-      const newData = { ...prev }
-      delete newData.phoneNumbers
-      return newData
-    })
-    // Reset file input
     const fileInput = document.getElementById('csvUpload')
     if (fileInput) {
       fileInput.value = ''
@@ -234,46 +226,51 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
   }
 
   const validateForm = () => {
-    console.log('=== FORM VALIDATION STARTED ===')
     const newErrors = {}
 
     if (!formData.name.trim()) {
       newErrors.name = 'Campaign name is required'
-      console.log('Validation Error: Campaign name is required')
     }
 
     if (!formData.category) {
       newErrors.category = 'Category is required'
-      console.log('Validation Error: Category is required')
     }
 
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required'
-      console.log('Validation Error: Description is required')
     }
 
-    if (formData.maxCallsPerDay && (isNaN(formData.maxCallsPerDay) || formData.maxCallsPerDay < 1)) {
-      newErrors.maxCallsPerDay = 'Must be a positive number'
-      console.log('Validation Error: Max calls per day invalid')
-    }
-
-    if (formData.callSchedule.enabled && formData.callSchedule.daysOfWeek.length === 0) {
-      newErrors.callScheduleDays = 'Select at least one day for call schedule'
-      console.log('Validation Error: Call schedule days required')
-    }
-
-    // For outgoing campaigns, validate phone numbers
+    // For outbound campaigns, validate required fields
     if (!isIncoming) {
-      console.log('Outgoing campaign - checking phone numbers')
-      console.log('Phone Numbers Count:', phoneNumbers.length)
+      if (!formData.startDate) {
+        newErrors.startDate = 'Start date is required for outbound campaigns'
+      }
+
+      if (!formData.endDate) {
+        newErrors.endDate = 'End date is required for outbound campaigns'
+      }
+
+      if (formData.startDate && formData.endDate) {
+        const start = new Date(formData.startDate)
+        const end = new Date(formData.endDate)
+        if (start > end) {
+          newErrors.endDate = 'End date must be after start date'
+        }
+      }
+
       if (phoneNumbers.length === 0) {
         newErrors.phoneNumbers = 'Please upload a CSV file with phone numbers'
-        console.log('Validation Error: Phone numbers required')
+      }
+
+      if (formData.settings.maxCalls && (isNaN(formData.settings.maxCalls) || formData.settings.maxCalls < 1)) {
+        newErrors.maxCalls = 'Must be a positive number'
+      }
+
+      if (formData.settings.retryAttempts && (isNaN(formData.settings.retryAttempts) || formData.settings.retryAttempts < 0)) {
+        newErrors.retryAttempts = 'Must be a non-negative number'
       }
     }
 
-    console.log('Validation Errors:', newErrors)
-    console.log('Validation Result:', Object.keys(newErrors).length === 0 ? 'PASSED' : 'FAILED')
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -281,175 +278,77 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    console.log('=== CAMPAIGN CREATION STARTED ===')
-    console.log('Form Data:', formData)
-    console.log('Phone Numbers:', phoneNumbers)
-    console.log('Is Incoming:', isIncoming)
-
     if (!validateForm()) {
-      console.log('Form validation failed')
       return
     }
 
-    console.log('Form validation passed')
     setIsSubmitting(true)
 
     try {
-      // For outgoing campaigns, call the API with phone numbers
-      if (!isIncoming && phoneNumbers.length > 0) {
-        console.log('=== API CALL STARTED ===')
-        console.log('Phone Numbers Count:', phoneNumbers.length)
-
-        try {
-          // Prepare phone numbers as comma-separated string
-          const phoneNumberString = phoneNumbers.join(',')
-          console.log('Phone Number String:', phoneNumberString)
-
-          // API endpoint and parameters
-          const apiUrl = 'http://180.150.249.216/webapi/datapush'
-          const params = new URLSearchParams({
-            username: 'testapi1@api.com',
-            password: '123@123',
-            phonenumber: phoneNumberString,
-            callerid: 'fixed',
-            voiceid: '5628'
-          })
-
-          const fullUrl = `${apiUrl}?${params.toString()}`
-          console.log('API URL:', fullUrl)
-          console.log('API Parameters:', {
-            username: 'testapi1@api.com',
-            password: '123@123',
-            phonenumber: phoneNumberString,
-            callerid: 'fixed',
-            voiceid: '5628'
-          })
-
-          // Call the API with error handling that doesn't block campaign creation
-          // Try CORS mode first, then fallback to no-cors if needed
-          let apiCallSuccess = false
-          let apiResponseData = null
-
-          try {
-            console.log('Attempting API call with CORS mode...')
-            const response = await fetch(fullUrl, {
-              method: 'GET',
-              mode: 'cors', // Try CORS mode first
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            })
-
-            console.log('API Response Status:', response.status)
-            console.log('API Response OK:', response.ok)
-            console.log('API Response Type:', response.type)
-            console.log('API Response Headers:', [...response.headers.entries()])
-
-            if (response.ok) {
-              try {
-                // Try to parse as JSON first
-                const apiResult = await response.json()
-                console.log('✅ API Response Success (JSON):', apiResult)
-                apiResponseData = apiResult
-                apiCallSuccess = true
-              } catch (jsonError) {
-                // If JSON parsing fails, try as text
-                try {
-                  const apiResult = await response.text()
-                  console.log('✅ API Response Success (Text):', apiResult)
-                  apiResponseData = apiResult
-                  apiCallSuccess = true
-                } catch (textError) {
-                  console.warn('Could not read response body:', textError)
-                  apiCallSuccess = true // Request was sent, server processed it
-                }
-              }
-            } else {
-              console.warn('⚠️ API Response not OK:', response.status, response.statusText)
-              // Still consider it sent - server might process it
-              apiCallSuccess = true
-            }
-          } catch (fetchError) {
-            console.warn('⚠️ CORS Error - Browser blocked response, but request may have been processed server-side')
-            console.warn('Error Type:', fetchError.name)
-            console.warn('Error Message:', fetchError.message)
-
-            // If CORS fails, try with no-cors mode (we can't read response but request goes through)
-            if (fetchError.name === 'TypeError' && fetchError.message.includes('Failed to fetch')) {
-              console.log('Attempting API call with no-cors mode (request will go through but we cannot read response)...')
-              try {
-                const noCorsResponse = await fetch(fullUrl, {
-                  method: 'GET',
-                  mode: 'no-cors' // This allows the request but we can't read response
-                })
-                console.log('✅ API Request sent with no-cors mode (response not readable due to CORS)')
-                console.log('Note: The API server is processing your request (as confirmed by Postman)')
-                console.log('Expected Response Format:', {
-                  type: 'success',
-                  tid: '19834',
-                  data: '1 voice call(s) scheduled successfully!!'
-                })
-                apiCallSuccess = true
-              } catch (noCorsError) {
-                console.error('Even no-cors mode failed:', noCorsError)
-              }
-            }
-
-            // Log full error details for debugging
-            console.warn('Full Error Details:', {
-              name: fetchError.name,
-              message: fetchError.message,
-              stack: fetchError.stack
-            })
-
-            // Don't throw - continue with campaign creation
-            // The API call is being processed server-side (confirmed by Postman and calls being received)
-            apiCallSuccess = true // Assume success since API works in Postman
+      // Prepare campaign data according to API structure
+      const campaignPayload = {
+        name: formData.name,
+        category: formData.category,
+        description: formData.description,
+        campaignType: campaignType,
+        status: formData.status,
+        settings: {
+          callTimeout: parseInt(formData.settings.callTimeout) || (isIncoming ? 45 : 30),
+          voiceSettings: {
+            voice: formData.settings.voiceSettings.voice,
+            speed: parseFloat(formData.settings.voiceSettings.speed) || 1,
+            language: formData.settings.voiceSettings.language
           }
-
-          if (apiCallSuccess) {
-            console.log('✅ API call processed (request sent to server)')
-            if (apiResponseData) {
-              console.log('📋 API Response Data:', apiResponseData)
-            } else {
-              console.log('ℹ️ Response not readable due to CORS, but request was processed server-side')
-            }
-          }
-
-          console.log('=== API CALL COMPLETED (continuing with campaign creation) ===')
-        } catch (apiError) {
-          // This catch block should rarely be hit now, but log it if it is
-          console.error('Unexpected API Error:', apiError)
-          // Still continue with campaign creation
         }
-      } else {
-        console.log('Skipping API call - Incoming campaign or no phone numbers')
       }
 
-      // Always create the campaign, even if API call had issues
-      console.log('=== CREATING CAMPAIGN ===')
-      console.log('Campaign Data to Save:', {
-        ...formData,
-        phoneNumbers: phoneNumbers.length > 0 ? phoneNumbers : undefined
-      })
+      // Add outbound-specific fields
+      if (!isIncoming) {
+        // Format dates to ISO 8601 with time
+        const startDate = new Date(formData.startDate)
+        startDate.setHours(0, 0, 0, 0)
+        const endDate = new Date(formData.endDate)
+        endDate.setHours(23, 59, 59, 999)
 
-      // Call the onSave callback with form data
-      await onSave(formData)
+        campaignPayload.startDate = startDate.toISOString()
+        campaignPayload.endDate = endDate.toISOString()
+        campaignPayload.phoneNumbers = phoneNumbers.map(num => num.startsWith('+') ? num : `+${num}`)
 
-      console.log('=== CAMPAIGN CREATED SUCCESSFULLY ===')
+        // Add outbound settings
+        if (formData.settings.maxCalls) {
+          campaignPayload.settings.maxCalls = parseInt(formData.settings.maxCalls)
+        }
+        if (formData.settings.retryAttempts !== '') {
+          campaignPayload.settings.retryAttempts = parseInt(formData.settings.retryAttempts) || 0
+        }
+        campaignPayload.settings.workingHours = {
+          start: formData.settings.workingHours.start,
+          end: formData.settings.workingHours.end,
+          timezone: formData.settings.workingHours.timezone
+        }
+      }
+
+      // Call the API
+      const response = await createCampaign(campaignPayload)
+
+      if (response.success && response.data) {
+        // Store the campaign ID and pass it to onSave
+        const campaignId = response.data._id || response.data.id
+        await onSave({
+          ...campaignPayload,
+          _id: campaignId,
+          id: campaignId
+        })
+      } else {
+        throw new Error(response.message || 'Failed to create campaign')
+      }
     } catch (error) {
-      console.error('=== ERROR SAVING CAMPAIGN ===')
-      console.error('Error Details:', error)
-      console.error('Error Message:', error.message)
-      console.error('Error Stack:', error.stack)
-      setErrors({ submit: 'Failed to save campaign. Please try again.' })
+      console.error('Error creating campaign:', error)
+      setErrors({ submit: error.message || 'Failed to create campaign. Please try again.' })
     } finally {
       setIsSubmitting(false)
-      console.log('=== CAMPAIGN CREATION PROCESS COMPLETED ===')
     }
   }
-
-  const isIncoming = type === 'incoming'
 
   return (
     <div className="min-h-screen bg-secondary-50">
@@ -484,7 +383,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">
-                    Create {isIncoming ? 'Incoming' : 'Outgoing'} Campaign
+                    Create {isIncoming ? 'Inbound' : 'Outbound'} Campaign
                   </h1>
                   <p className="text-xs text-secondary-500">Fill in the details below</p>
                 </div>
@@ -517,7 +416,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                   onChange={handleChange}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.name ? 'border-red-500' : 'border-secondary-300'
                     }`}
-                  placeholder="e.g., Property Inquiry - Premium Listings"
+                  placeholder="e.g., SS Cendana Property Outreach"
                   required
                 />
                 {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
@@ -562,35 +461,45 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                 {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-secondary-700 mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
+              {/* Outbound only: Start Date and End Date */}
+              {!isIncoming && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="startDate" className="block text-sm font-medium text-secondary-700 mb-1">
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      id="startDate"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleChange}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.startDate ? 'border-red-500' : 'border-secondary-300'
+                        }`}
+                      required
+                    />
+                    {errors.startDate && <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>}
+                  </div>
 
-                <div>
-                  <label htmlFor="endDate" className="block text-sm font-medium text-secondary-700 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
+                  <div>
+                    <label htmlFor="endDate" className="block text-sm font-medium text-secondary-700 mb-1">
+                      End Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      id="endDate"
+                      name="endDate"
+                      value={formData.endDate}
+                      onChange={handleChange}
+                      min={formData.startDate}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.endDate ? 'border-red-500' : 'border-secondary-300'
+                        }`}
+                      required
+                    />
+                    {errors.endDate && <p className="mt-1 text-sm text-red-600">{errors.endDate}</p>}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label htmlFor="status" className="block text-sm font-medium text-secondary-700 mb-1">
@@ -603,17 +512,17 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="active">Active (Live)</option>
+                  <option value="active">Active</option>
                   <option value="paused">Paused</option>
                 </select>
                 <p className="mt-1 text-xs text-secondary-500">
-                  Campaign will be {formData.status === 'active' ? 'live' : 'paused'} upon creation
+                  Campaign will be {formData.status === 'active' ? 'active' : 'paused'} upon creation
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Phone Numbers Upload - Only for Outgoing Campaigns */}
+          {/* Phone Numbers Upload - Only for Outbound Campaigns */}
           {!isIncoming && (
             <div className="card p-5 sm:p-6">
               <div className="flex items-center space-x-2 mb-4">
@@ -668,13 +577,13 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                           <ul className="list-disc list-inside space-y-1 text-blue-700">
                             <li>File must be in .csv format</li>
                             <li>No header row - first line should contain a phone number</li>
-                            <li>Each line must contain exactly 10 digits (one phone number per row)</li>
+                            <li>Each line must contain a valid phone number (with or without country code)</li>
                             <li>Example format:</li>
                           </ul>
                           <div className="mt-2 bg-white p-2 rounded border border-blue-200 font-mono text-xs">
-                            9369410105<br />
-                            9876543210<br />
-                            9123456789
+                            +919876543210<br />
+                            +919876543211<br />
+                            9876543212
                           </div>
                         </div>
                       </div>
@@ -709,140 +618,157 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
             </div>
           )}
 
-          {/* Call Settings */}
+          {/* Settings */}
           <div className="card p-5 sm:p-6">
-            <h2 className="text-lg font-semibold text-secondary-900 mb-4">Call Settings</h2>
+            <h2 className="text-lg font-semibold text-secondary-900 mb-4">Settings</h2>
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="maxCallsPerDay" className="block text-sm font-medium text-secondary-700 mb-1">
-                  Maximum Calls Per Day
+                <label htmlFor="callTimeout" className="block text-sm font-medium text-secondary-700 mb-1">
+                  Call Timeout (seconds)
                 </label>
                 <input
                   type="number"
-                  id="maxCallsPerDay"
-                  name="maxCallsPerDay"
-                  value={formData.maxCallsPerDay}
+                  id="callTimeout"
+                  name="settings.callTimeout"
+                  value={formData.settings.callTimeout}
                   onChange={handleChange}
                   min="1"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.maxCallsPerDay ? 'border-red-500' : 'border-secondary-300'
-                    }`}
-                  placeholder="Leave empty for unlimited"
-                />
-                {errors.maxCallsPerDay && <p className="mt-1 text-sm text-red-600">{errors.maxCallsPerDay}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="timeZone" className="block text-sm font-medium text-secondary-700 mb-1">
-                  Time Zone
-                </label>
-                <select
-                  id="timeZone"
-                  name="timeZone"
-                  value={formData.timeZone}
-                  onChange={handleChange}
                   className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="America/New_York">Eastern Time (ET)</option>
-                  <option value="America/Chicago">Central Time (CT)</option>
-                  <option value="America/Denver">Mountain Time (MT)</option>
-                  <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                  <option value="UTC">UTC</option>
-                </select>
+                  placeholder={isIncoming ? "45" : "30"}
+                />
+                <p className="mt-1 text-xs text-secondary-500">Default: {isIncoming ? '45' : '30'} seconds</p>
               </div>
 
-              <div>
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    name="callSchedule.enabled"
-                    checked={formData.callSchedule.enabled}
-                    onChange={handleChange}
-                    className="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm font-medium text-secondary-700">Enable Call Schedule</span>
-                </label>
+              {/* Outbound only settings */}
+              {!isIncoming && (
+                <>
+                  <div>
+                    <label htmlFor="maxCalls" className="block text-sm font-medium text-secondary-700 mb-1">
+                      Max Calls
+                    </label>
+                    <input
+                      type="number"
+                      id="maxCalls"
+                      name="settings.maxCalls"
+                      value={formData.settings.maxCalls}
+                      onChange={handleChange}
+                      min="1"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.maxCalls ? 'border-red-500' : 'border-secondary-300'
+                        }`}
+                      placeholder="e.g., 100"
+                    />
+                    {errors.maxCalls && <p className="mt-1 text-sm text-red-600">{errors.maxCalls}</p>}
+                  </div>
 
-                {formData.callSchedule.enabled && (
-                  <div className="mt-4 space-y-4 pl-6">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="retryAttempts" className="block text-sm font-medium text-secondary-700 mb-1">
+                      Retry Attempts
+                    </label>
+                    <input
+                      type="number"
+                      id="retryAttempts"
+                      name="settings.retryAttempts"
+                      value={formData.settings.retryAttempts}
+                      onChange={handleChange}
+                      min="0"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.retryAttempts ? 'border-red-500' : 'border-secondary-300'
+                        }`}
+                      placeholder="e.g., 2"
+                    />
+                    {errors.retryAttempts && <p className="mt-1 text-sm text-red-600">{errors.retryAttempts}</p>}
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-secondary-900 mb-3">Working Hours</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label htmlFor="startTime" className="block text-sm font-medium text-secondary-700 mb-1">
+                        <label htmlFor="workingHoursStart" className="block text-sm font-medium text-secondary-700 mb-1">
                           Start Time
                         </label>
                         <input
                           type="time"
-                          id="startTime"
-                          name="callSchedule.startTime"
-                          value={formData.callSchedule.startTime}
+                          id="workingHoursStart"
+                          name="settings.workingHours.start"
+                          value={formData.settings.workingHours.start}
                           onChange={handleChange}
                           className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                       <div>
-                        <label htmlFor="endTime" className="block text-sm font-medium text-secondary-700 mb-1">
+                        <label htmlFor="workingHoursEnd" className="block text-sm font-medium text-secondary-700 mb-1">
                           End Time
                         </label>
                         <input
                           type="time"
-                          id="endTime"
-                          name="callSchedule.endTime"
-                          value={formData.callSchedule.endTime}
+                          id="workingHoursEnd"
+                          name="settings.workingHours.end"
+                          value={formData.settings.workingHours.end}
                           onChange={handleChange}
                           className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-secondary-700 mb-2">
-                        Days of Week
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {daysOfWeek.map(day => (
-                          <button
-                            key={day.value}
-                            type="button"
-                            onClick={() => handleDayToggle(day.value)}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${formData.callSchedule.daysOfWeek.includes(day.value)
-                              ? 'bg-primary-600 text-white'
-                              : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
-                              }`}
-                          >
-                            {day.label}
-                          </button>
-                        ))}
+                      <div>
+                        <label htmlFor="workingHoursTimezone" className="block text-sm font-medium text-secondary-700 mb-1">
+                          Timezone
+                        </label>
+                        <select
+                          id="workingHoursTimezone"
+                          name="settings.workingHours.timezone"
+                          value={formData.settings.workingHours.timezone}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          {timezones.map(tz => (
+                            <option key={tz.value} value={tz.value}>{tz.label}</option>
+                          ))}
+                        </select>
                       </div>
-                      {errors.callScheduleDays && (
-                        <p className="mt-1 text-sm text-red-600">{errors.callScheduleDays}</p>
-                      )}
                     </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Voice Agent Settings */}
+          {/* Voice Settings */}
           <div className="card p-5 sm:p-6">
-            <h2 className="text-lg font-semibold text-secondary-900 mb-4">Voice Agent Settings</h2>
+            <h2 className="text-lg font-semibold text-secondary-900 mb-4">Voice Settings</h2>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label htmlFor="agentType" className="block text-sm font-medium text-secondary-700 mb-1">
-                    Agent Type
+                  <label htmlFor="voice" className="block text-sm font-medium text-secondary-700 mb-1">
+                    Voice
                   </label>
                   <select
-                    id="agentType"
-                    name="voiceAgentSettings.agentType"
-                    value={formData.voiceAgentSettings.agentType}
+                    id="voice"
+                    name="settings.voiceSettings.voice"
+                    value={formData.settings.voiceSettings.voice}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="neural">Neural (Recommended)</option>
-                    <option value="standard">Standard</option>
+                    {voices.map(voice => (
+                      <option key={voice.value} value={voice.value}>{voice.label}</option>
+                    ))}
                   </select>
+                </div>
+
+                <div>
+                  <label htmlFor="speed" className="block text-sm font-medium text-secondary-700 mb-1">
+                    Speed
+                  </label>
+                  <input
+                    type="number"
+                    id="speed"
+                    name="settings.voiceSettings.speed"
+                    value={formData.settings.voiceSettings.speed}
+                    onChange={handleChange}
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
                 </div>
 
                 <div>
@@ -851,54 +777,17 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                   </label>
                   <select
                     id="language"
-                    name="voiceAgentSettings.language"
-                    value={formData.voiceAgentSettings.language}
+                    name="settings.voiceSettings.language"
+                    value={formData.settings.voiceSettings.language}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="en-US">English (US)</option>
-                    <option value="en-GB">English (UK)</option>
-                    <option value="es-ES">Spanish</option>
-                    <option value="fr-FR">French</option>
-                    <option value="de-DE">German</option>
+                    {languages.map(lang => (
+                      <option key={lang.value} value={lang.value}>{lang.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Lead Qualification Settings */}
-          <div className="card p-5 sm:p-6">
-            <h2 className="text-lg font-semibold text-secondary-900 mb-4">Lead Qualification Settings</h2>
-
-            <div className="space-y-4">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  name="leadQualification.enabled"
-                  checked={formData.leadQualification.enabled}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500"
-                />
-                <span className="text-sm font-medium text-secondary-700">Enable Lead Qualification</span>
-              </label>
-
-              {formData.leadQualification.enabled && (
-                <div>
-                  <label htmlFor="qualificationCriteria" className="block text-sm font-medium text-secondary-700 mb-1">
-                    Qualification Criteria
-                  </label>
-                  <textarea
-                    id="qualificationCriteria"
-                    name="leadQualification.qualificationCriteria"
-                    value={formData.leadQualification.qualificationCriteria}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Describe what makes a qualified lead..."
-                  />
-                </div>
-              )}
             </div>
           </div>
 
@@ -935,5 +824,3 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
 }
 
 export default CreateCampaign
-
-

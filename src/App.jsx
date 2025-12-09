@@ -5,12 +5,14 @@ import CallLogs from './components/CallLogs'
 import CallDetails from './components/CallDetails'
 import CreateCampaign from './components/CreateCampaign'
 import DashboardOverview from './components/DashboardOverview'
+import CampaignDetails from './components/CampaignDetails'
 import ProjectTraining from './components/ProjectTraining'
 import ApiDocs from './components/ApiDocs'
 import WalletTopUp from './components/WalletTopUp'
 import Login from './components/Login'
 import SessionWarning from './components/SessionWarning'
 import { isAuthenticated, getUser, clearAuth, updateLastActivity } from './api/auth'
+import { getCampaignById } from './api'
 import sessionManager from './utils/sessionManager'
 import {
   LayoutGrid,
@@ -28,10 +30,11 @@ import {
 function App() {
   const [isAuthenticatedState, setIsAuthenticatedState] = useState(false)
   const [user, setUser] = useState(null)
-  const [view, setView] = useState('dashboardOverview') // dashboard, campaigns, callLogs, callDetails, createCampaign
+  const [view, setView] = useState('dashboardOverview') // dashboard, campaigns, callLogs, callDetails, createCampaign, campaignDetails
   const [selectedCampaignType, setSelectedCampaignType] = useState(null) // incoming or outgoing
   const [selectedCampaign, setSelectedCampaign] = useState(null)
   const [selectedCall, setSelectedCall] = useState(null)
+  const [selectedCampaignDetails, setSelectedCampaignDetails] = useState(null)
   const [campaigns, setCampaigns] = useState({ incoming: [], outgoing: [] })
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showSessionWarning, setShowSessionWarning] = useState(false)
@@ -116,9 +119,32 @@ function App() {
     setIsMobileMenuOpen(false)
   }
 
-  const handleSelectCampaign = (campaign) => {
-    setSelectedCampaign(campaign)
-    setView('callLogs')
+  const handleSelectCampaign = async (campaign) => {
+    // If campaign has an ID, fetch full details from API
+    if (campaign && (campaign._id || campaign.id)) {
+      try {
+        const campaignId = campaign._id || campaign.id
+        const campaignDetails = await getCampaignById(campaignId)
+
+        if (campaignDetails) {
+          setSelectedCampaign(campaignDetails)
+          setView('callLogs')
+        } else {
+          // Fallback to passed campaign data if API call fails
+          setSelectedCampaign(campaign)
+          setView('callLogs')
+        }
+      } catch (error) {
+        console.error('Error fetching campaign details:', error)
+        // Fallback to passed campaign data if API call fails
+        setSelectedCampaign(campaign)
+        setView('callLogs')
+      }
+    } else {
+      // Use passed campaign data directly
+      setSelectedCampaign(campaign)
+      setView('callLogs')
+    }
   }
 
   const handleSelectCall = (call) => {
@@ -146,6 +172,9 @@ function App() {
       setSelectedCampaignType(null)
     } else if (view === 'createCampaign') {
       setView('campaigns')
+    } else if (view === 'campaignDetails') {
+      setView('dashboardOverview')
+      setSelectedCampaignDetails(null)
     } else if (['dashboardOverview', 'projectTraining', 'apiDocs', 'wallet'].includes(view)) {
       setView('dashboardOverview')
     }
@@ -156,6 +185,35 @@ function App() {
     setSelectedCampaignType(null)
     setSelectedCampaign(null)
     setSelectedCall(null)
+    setSelectedCampaignDetails(null)
+  }
+
+  const handleCampaignClick = async (campaign) => {
+    // If campaign has an ID, fetch full details from API
+    if (campaign && (campaign._id || campaign.id)) {
+      try {
+        const campaignId = campaign._id || campaign.id
+        const campaignDetails = await getCampaignById(campaignId)
+
+        if (campaignDetails) {
+          setSelectedCampaignDetails(campaignDetails)
+          setView('campaignDetails')
+        } else {
+          // Fallback to passed campaign data if API call fails
+          setSelectedCampaignDetails(campaign)
+          setView('campaignDetails')
+        }
+      } catch (error) {
+        console.error('Error fetching campaign details:', error)
+        // Fallback to passed campaign data if API call fails
+        setSelectedCampaignDetails(campaign)
+        setView('campaignDetails')
+      }
+    } else {
+      // Use passed campaign data directly
+      setSelectedCampaignDetails(campaign)
+      setView('campaignDetails')
+    }
   }
 
   const handleCreateCampaign = () => {
@@ -163,44 +221,8 @@ function App() {
   }
 
   const handleSaveCampaign = async (campaignData) => {
-    // Generate a unique ID for the new campaign
-    const campaignType = campaignData.campaignType
-    const existingCampaigns = campaigns[campaignType] || []
-    const newId = campaignType === 'incoming'
-      ? `INC${String(existingCampaigns.length + 1).padStart(3, '0')}`
-      : `OUT${String(existingCampaigns.length + 1).padStart(3, '0')}`
-
-    // Create the new campaign object
-    const newCampaign = {
-      id: newId,
-      name: campaignData.name,
-      category: campaignData.category,
-      description: campaignData.description,
-      status: campaignData.status,
-      totalCalls: 0,
-      successfulCalls: 0,
-      avgDuration: '0:00',
-      createdDate: new Date().toISOString().split('T')[0],
-      callLogs: [],
-      // Store additional configuration
-      config: {
-        startDate: campaignData.startDate,
-        endDate: campaignData.endDate,
-        timeZone: campaignData.timeZone,
-        maxCallsPerDay: campaignData.maxCallsPerDay,
-        callSchedule: campaignData.callSchedule,
-        voiceAgentSettings: campaignData.voiceAgentSettings,
-        leadQualification: campaignData.leadQualification,
-        integrationSettings: campaignData.integrationSettings
-      }
-    }
-
-    // Update campaigns state
-    setCampaigns(prev => ({
-      ...prev,
-      [campaignType]: [...prev[campaignType], newCampaign]
-    }))
-
+    // Campaign data already contains the ID from API response
+    // The CreateCampaign component handles API call and passes the response data
     // Navigate back to campaigns list
     setView('campaigns')
   }
@@ -411,7 +433,11 @@ function App() {
         )}
 
         {view === 'dashboardOverview' && (
-          <DashboardOverview onBack={handleBack} onHome={handleHome} />
+          <DashboardOverview
+            onBack={handleBack}
+            onHome={handleHome}
+            onCampaignClick={handleCampaignClick}
+          />
         )}
 
         {view === 'projectTraining' && (
@@ -466,8 +492,16 @@ function App() {
             onHome={handleHome}
           />
         )}
+
+        {view === 'campaignDetails' && (
+          <CampaignDetails
+            campaign={selectedCampaignDetails}
+            onBack={handleBack}
+            onHome={handleHome}
+          />
+        )}
       </main>
-      
+
       {/* Session Warning Modal */}
       <SessionWarning
         isVisible={showSessionWarning}

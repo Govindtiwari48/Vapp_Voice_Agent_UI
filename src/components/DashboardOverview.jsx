@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, CalendarRange, Download, Home, TrendingUp, TrendingDown, Loader2, AlertCircle, Phone, Clock, PlayCircle, Target } from 'lucide-react'
-import { getDashboardOverview, getDashboardMetrics, getCalls } from '../api'
+import { ArrowLeft, CalendarRange, Download, Home, TrendingUp, TrendingDown, Loader2, AlertCircle, Phone, Clock, PlayCircle, Target, PhoneIncoming, PhoneOutgoing, Eye } from 'lucide-react'
+import { getDashboardOverview, getDashboardMetrics, getCalls, getCampaigns } from '../api'
 import StatusFilter from './StatusFilter'
 
 // Status filter options based on backend API
@@ -12,7 +12,7 @@ const statusFilterOptions = [
   { label: 'Cancelled', value: 'CANCELLED' }
 ]
 
-const DashboardOverview = ({ onBack, onHome }) => {
+const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
   const [range, setRange] = useState('total')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -27,6 +27,14 @@ const DashboardOverview = ({ onBack, onHome }) => {
     endDate: ''
   })
   const [callsPagination, setCallsPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 20
+  })
+  const [campaignsData, setCampaignsData] = useState(null)
+  const [campaignsLoading, setCampaignsLoading] = useState(false)
+  const [campaignsPagination, setCampaignsPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalRecords: 0,
@@ -48,6 +56,11 @@ const DashboardOverview = ({ onBack, onHome }) => {
       fetchCallsData()
     }
   }, [callsPagination.currentPage, statusFilter])
+
+  // Fetch campaigns data on mount and when pagination changes
+  useEffect(() => {
+    fetchCampaignsData()
+  }, [campaignsPagination.currentPage])
 
   const fetchDashboardData = async () => {
     setLoading(true)
@@ -219,6 +232,44 @@ const DashboardOverview = ({ onBack, onHome }) => {
 
   const handleCallsPageChange = (newPage) => {
     setCallsPagination(prev => ({ ...prev, currentPage: newPage }))
+  }
+
+  const fetchCampaignsData = async () => {
+    setCampaignsLoading(true)
+    try {
+      const params = {
+        page: campaignsPagination.currentPage,
+        limit: campaignsPagination.limit
+      }
+
+      const response = await getCampaigns(params)
+
+      if (response) {
+        setCampaignsData(response)
+        setCampaignsPagination(prev => ({
+          ...prev,
+          currentPage: response.pagination?.currentPage || prev.currentPage,
+          totalPages: response.pagination?.totalPages || 1,
+          totalRecords: response.pagination?.totalRecords || 0,
+          limit: response.pagination?.limit || 20
+        }))
+      }
+    } catch (err) {
+      console.warn('Failed to fetch campaigns data:', err.message)
+    } finally {
+      setCampaignsLoading(false)
+    }
+  }
+
+  const handleCampaignsPageChange = (newPage) => {
+    setCampaignsPagination(prev => ({ ...prev, currentPage: newPage }))
+  }
+
+  const handleCampaignClick = (campaign) => {
+    // Navigate to campaign details - this will be handled by parent component
+    if (onCampaignClick) {
+      onCampaignClick(campaign)
+    }
   }
 
   // Helper functions
@@ -730,12 +781,12 @@ const DashboardOverview = ({ onBack, onHome }) => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.status === 'ANSWERED'
-                              ? 'bg-green-100 text-green-800'
-                              : call.status === 'BUSY'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : call.status === 'NO_ANSWER'
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : 'bg-red-100 text-red-800'
+                            ? 'bg-green-100 text-green-800'
+                            : call.status === 'BUSY'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : call.status === 'NO_ANSWER'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-red-100 text-red-800'
                             }`}>
                             {call.status}
                           </span>
@@ -799,6 +850,139 @@ const DashboardOverview = ({ onBack, onHome }) => {
               </>
             ) : (
               <p className="text-sm text-secondary-500 text-center py-8">No calls available</p>
+            )}
+          </div>
+        )}
+
+        {/* Campaigns Section */}
+        {!loading && (
+          <div className="card p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase text-secondary-500 tracking-wide">Campaign Management</p>
+                <h3 className="text-lg font-semibold text-secondary-900">All Campaigns</h3>
+              </div>
+              <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
+            </div>
+
+            {campaignsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
+                <p className="ml-3 text-secondary-600">Loading campaigns...</p>
+              </div>
+            ) : campaignsData?.campaigns?.length > 0 ? (
+              <>
+                <div className="space-y-3">
+                  {campaignsData.campaigns.map((campaign) => {
+                    const isInbound = campaign.campaignType === 'inbound'
+                    const metrics = campaign.metrics || {}
+                    const successRate = metrics.totalCalls > 0
+                      ? Math.round((metrics.successfulCalls / metrics.totalCalls) * 100)
+                      : 0
+
+                    return (
+                      <div
+                        key={campaign._id}
+                        onClick={() => handleCampaignClick(campaign)}
+                        className="flex items-center justify-between border border-secondary-200 rounded-lg p-4 hover:border-primary-300 hover:shadow-md transition-all cursor-pointer bg-white"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <div className={`p-2 rounded-lg flex-shrink-0 ${isInbound ? 'bg-green-100' : 'bg-blue-100'}`}>
+                              {isInbound ? (
+                                <PhoneIncoming className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <PhoneOutgoing className="w-4 h-4 text-blue-600" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <h4 className="text-sm font-semibold text-secondary-900 truncate">{campaign.name}</h4>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${campaign.status === 'active'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                  {campaign.status}
+                                </span>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isInbound
+                                    ? 'bg-green-50 text-green-700 border border-green-200'
+                                    : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  }`}>
+                                  {isInbound ? 'Inbound' : 'Outbound'}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-4 text-xs text-secondary-500">
+                                <span className="truncate">{campaign.category}</span>
+                                {campaign.startDate && campaign.endDate && (
+                                  <span>
+                                    {new Date(campaign.startDate).toLocaleDateString()} - {new Date(campaign.endDate).toLocaleDateString()}
+                                  </span>
+                                )}
+                                {campaign.createdAt && (
+                                  <span>Created: {new Date(campaign.createdAt).toLocaleDateString()}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-secondary-600 ml-11 line-clamp-1">{campaign.description}</p>
+                        </div>
+                        <div className="flex items-center space-x-4 flex-shrink-0 ml-4">
+                          <div className="text-right">
+                            <div className="text-sm font-semibold text-secondary-900">{metrics.totalCalls || 0}</div>
+                            <p className="text-xs text-secondary-500">Total Calls</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-semibold text-green-600">{successRate}%</div>
+                            <p className="text-xs text-secondary-500">Success Rate</p>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCampaignClick(campaign)
+                            }}
+                            className="p-2 hover:bg-primary-50 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4 text-primary-600" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Campaigns Pagination Controls */}
+                {campaignsPagination.totalPages > 1 && (
+                  <div className="pt-4 mt-4 border-t border-secondary-200">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="text-sm font-medium text-secondary-700">
+                        Showing <span className="font-bold text-primary-700">{((campaignsPagination.currentPage - 1) * campaignsPagination.limit) + 1}</span> to <span className="font-bold text-primary-700">{Math.min(campaignsPagination.currentPage * campaignsPagination.limit, campaignsPagination.totalRecords)}</span> of <span className="font-bold text-primary-700">{campaignsPagination.totalRecords}</span> campaigns
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleCampaignsPageChange(campaignsPagination.currentPage - 1)}
+                          disabled={campaignsPagination.currentPage === 1}
+                          className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Previous
+                        </button>
+                        <span className="text-sm text-secondary-600">
+                          Page {campaignsPagination.currentPage} of {campaignsPagination.totalPages}
+                        </span>
+                        <button
+                          onClick={() => handleCampaignsPageChange(campaignsPagination.currentPage + 1)}
+                          disabled={campaignsPagination.currentPage >= campaignsPagination.totalPages}
+                          className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-secondary-500 text-center py-8">No campaigns available</p>
             )}
           </div>
         )}

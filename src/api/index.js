@@ -4,7 +4,7 @@
  */
 
 // Get API base URL from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://64.227.130.114:4003';
 
 /**
  * Get authentication token from localStorage
@@ -454,6 +454,124 @@ export const getDateRange = (period) => {
                 startDate: null,
                 endDate: null
             };
+    }
+};
+
+// ============================================================================
+// CAMPAIGN MANAGEMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * Create a new campaign
+ * @param {Object} campaignData - Campaign data
+ * @returns {Promise<Object>} Created campaign data with ID
+ */
+export const createCampaign = async (campaignData) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/campaigns`, {
+            method: 'POST',
+            headers: createHeaders(),
+            body: JSON.stringify(campaignData)
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Get all campaigns with pagination and filters
+ * @param {Object} params - Query parameters
+ * @param {number} params.page - Page number (default: 1)
+ * @param {number} params.limit - Records per page (default: 20)
+ * @param {string} params.type - Filter by campaign type (inbound, outbound)
+ * @param {string} params.campaignType - Filter by campaign type (inbound, outbound) - legacy support
+ * @param {string} params.status - Filter by status (active, paused)
+ * @returns {Promise<Object>} Paginated campaigns data
+ */
+export const getCampaigns = async (params = {}) => {
+    try {
+        const queryParams = new URLSearchParams();
+
+        if (params.page) queryParams.append('page', params.page);
+        if (params.limit) queryParams.append('limit', params.limit);
+        // Support both 'type' (new API) and 'campaignType' (legacy)
+        if (params.type) {
+            queryParams.append('type', params.type);
+        } else if (params.campaignType) {
+            queryParams.append('type', params.campaignType);
+        }
+        if (params.status) queryParams.append('status', params.status);
+
+        const url = `${API_BASE_URL}/api/campaigns${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        const result = await handleResponse(response);
+
+        // Handle the API response format
+        if (result.success && result.data) {
+            return {
+                campaigns: result.data.campaigns || [],
+                pagination: result.data.pagination || {
+                    currentPage: result.data.pagination?.currentPage || 1,
+                    totalPages: result.data.pagination?.totalPages || 1,
+                    totalRecords: result.data.pagination?.totalRecords || 0,
+                    limit: result.data.pagination?.limit || 20,
+                    hasNextPage: result.data.pagination?.hasNextPage || false,
+                    hasPrevPage: result.data.pagination?.hasPrevPage || false,
+                    nextPage: result.data.pagination?.nextPage || null,
+                    prevPage: result.data.pagination?.prevPage || null
+                },
+                filters: result.data.filters || { appliedFilters: [] }
+            };
+        }
+
+        return {
+            campaigns: [],
+            pagination: {
+                currentPage: 1,
+                totalPages: 1,
+                totalRecords: 0,
+                limit: 20,
+                hasNextPage: false,
+                hasPrevPage: false,
+                nextPage: null,
+                prevPage: null
+            },
+            filters: { appliedFilters: [] }
+        };
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Get campaign by ID
+ * @param {string} campaignId - Campaign ID
+ * @returns {Promise<Object>} Campaign data
+ */
+export const getCampaignById = async (campaignId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaignId}`, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        const result = await handleResponse(response);
+
+        // Handle the API response format
+        if (result.success && result.data) {
+            return result.data;
+        }
+
+        throw new Error('Campaign not found');
+    } catch (error) {
+        return handleError(error);
     }
 };
 
