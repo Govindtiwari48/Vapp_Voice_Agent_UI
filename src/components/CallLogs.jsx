@@ -48,13 +48,13 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   const fetchCalls = async () => {
     setLoading(true)
     setError('')
-    
+
     try {
       const params = {
         page: pagination.currentPage,
         limit: pagination.limit
       }
-      
+
       // Add date range based on active filter
       if (activeFilter !== 'custom') {
         const dateRange = getDateRange(activeFilter)
@@ -66,15 +66,27 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
         params.startDate = new Date(customDates.startDate).toISOString()
         params.endDate = new Date(customDates.endDate).toISOString()
       }
-      
+
       const response = await getCalls(params)
-      
+
+      const totalRecords = response.totalRecords || 0
+      const limit = response.limit || 20
+      // Calculate totalPages if not provided or if it seems incorrect
+      let totalPages = response.totalPages || 1
+      if (totalRecords > 0 && limit > 0) {
+        const calculatedPages = Math.ceil(totalRecords / limit)
+        // Use the calculated value if API didn't provide it or if it seems wrong
+        if (!response.totalPages || calculatedPages > totalPages) {
+          totalPages = calculatedPages
+        }
+      }
+
       setCalls(response.calls || [])
       setPagination({
         currentPage: response.currentPage || 1,
-        totalPages: response.totalPages || 1,
-        totalRecords: response.totalRecords || 0,
-        limit: response.limit || 20
+        totalPages: totalPages,
+        totalRecords: totalRecords,
+        limit: limit
       })
     } catch (err) {
       setError(err.message || 'Failed to load call logs')
@@ -104,12 +116,12 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     setDownloading(true)
     try {
       const params = { range: activeFilter }
-      
+
       if (activeFilter === 'custom' && customDates.startDate && customDates.endDate) {
         params.startDate = customDates.startDate
         params.endDate = customDates.endDate
       }
-      
+
       const filename = `call-logs-${activeFilter}-${new Date().toISOString().split('T')[0]}.xlsx`
       await downloadDashboardExport(params, filename)
     } catch (err) {
@@ -249,17 +261,16 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     key={filter.value}
                     onClick={() => handleFilterChange(filter.value)}
                     disabled={loading}
-                    className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation disabled:opacity-50 ${
-                      activeFilter === filter.value
+                    className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation disabled:opacity-50 ${activeFilter === filter.value
                         ? 'bg-primary-600 text-white border-primary-600'
                         : 'border-secondary-200 text-secondary-600 hover:text-secondary-900 active:bg-secondary-50'
-                    }`}
+                      }`}
                   >
                     {filter.label}
                   </button>
                 ))}
               </div>
-              <button 
+              <button
                 onClick={handleDownload}
                 disabled={downloading || loading}
                 className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto disabled:opacity-50"
@@ -283,7 +294,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
               <div>
                 <p className="text-sm font-medium text-red-800">Error loading call logs</p>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
-                <button 
+                <button
                   onClick={fetchCalls}
                   className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium"
                 >
@@ -319,14 +330,14 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
               </div>
             </div>
             <div className="flex items-center space-x-3 mt-4">
-              <button 
+              <button
                 onClick={handleCustomDateSubmit}
                 disabled={!customDates.startDate || !customDates.endDate}
                 className="btn-primary disabled:opacity-50"
               >
                 Apply Date Range
               </button>
-              <button 
+              <button
                 onClick={() => setShowCustomDatePicker(false)}
                 className="btn-secondary"
               >
@@ -348,154 +359,154 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
         {/* Call Logs - Desktop Table View */}
         {!loading && (
-        <div className="card hidden md:block">
-          <div className="px-4 sm:px-6 py-4 border-b border-secondary-200">
-            <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
-            <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-secondary-50 border-b border-secondary-200">
-                <tr>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Call ID
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Phone Number
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Duration
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Spend (INR)
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Disposition Type
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-secondary-200">
-                {displayCalls.map((call) => (
-                  <tr
-                    key={call.id}
-                    onClick={() => onSelectCall(call)}
-                    className="hover:bg-secondary-50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">{getStatusBadge(call.status)}</td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(call.status)}
-                        <span className="text-sm font-medium text-secondary-900">{call.id}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <Phone className="w-4 h-4 text-secondary-400" />
-                        <span className="text-sm text-secondary-900">{call.phoneNumber}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-secondary-900">{call.date}</div>
-                      <div className="text-xs text-secondary-500">{call.time}</div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-1.5">
-                        <Clock className="w-4 h-4 text-secondary-400" />
-                        <span className="text-sm text-secondary-900">{call.duration}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <IndianRupee className="w-4 h-4 text-secondary-400" />
-                        <span className="text-sm font-medium text-secondary-900">{formatCurrency(call.spendInr)}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {call.dispositionType ? (
-                        <span className={`badge ${call.dispositionType === 'Successful' ? 'badge-success' : 'badge-warning'}`}>
-                          {call.dispositionType}
-                        </span>
-                      ) : (
-                        getStatusBadge(call.status)
-                      )}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-primary-600 font-semibold">
-                      {call.recommendedAction || '—'}
-                    </td>
+          <div className="card hidden md:block">
+            <div className="px-4 sm:px-6 py-4 border-b border-secondary-200">
+              <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
+              <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-secondary-50 border-b border-secondary-200">
+                  <tr>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                      Call ID
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                      Phone Number
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                      Date & Time
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                      Spend (INR)
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                      Disposition Type
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                      Action
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-secondary-200">
+                  {displayCalls.map((call) => (
+                    <tr
+                      key={call.id}
+                      onClick={() => onSelectCall(call)}
+                      className="hover:bg-secondary-50 cursor-pointer transition-colors"
+                    >
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">{getStatusBadge(call.status)}</td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          {getStatusIcon(call.status)}
+                          <span className="text-sm font-medium text-secondary-900">{call.id}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <Phone className="w-4 h-4 text-secondary-400" />
+                          <span className="text-sm text-secondary-900">{call.phoneNumber}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-secondary-900">{call.date}</div>
+                        <div className="text-xs text-secondary-500">{call.time}</div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-1.5">
+                          <Clock className="w-4 h-4 text-secondary-400" />
+                          <span className="text-sm text-secondary-900">{call.duration}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <IndianRupee className="w-4 h-4 text-secondary-400" />
+                          <span className="text-sm font-medium text-secondary-900">{formatCurrency(call.spendInr)}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        {call.dispositionType ? (
+                          <span className={`badge ${call.dispositionType === 'Successful' ? 'badge-success' : 'badge-warning'}`}>
+                            {call.dispositionType}
+                          </span>
+                        ) : (
+                          getStatusBadge(call.status)
+                        )}
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-primary-600 font-semibold">
+                        {call.recommendedAction || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
         )}
 
         {/* Call Logs - Mobile Card View */}
         {!loading && (
-        <div className="md:hidden space-y-3">
-          <div className="mb-3">
-            <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
-            <p className="text-xs text-secondary-500 mt-0.5">Tap on any call to view details</p>
-          </div>
-          {displayCalls.map((call) => (
-            <div
-              key={call.id}
-              onClick={() => onSelectCall(call)}
-              className="card p-4 cursor-pointer active:bg-secondary-50 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-2 flex-1 min-w-0">
-                  {getStatusIcon(call.status)}
-                  <span className="text-sm font-medium text-secondary-900 truncate">{call.id}</span>
-                </div>
-                {getStatusBadge(call.status)}
-              </div>
-              
-              <div className="space-y-2 mb-3">
-                <div className="flex items-center space-x-2">
-                  <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                  <span className="text-sm text-secondary-900">{call.phoneNumber}</span>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                  <div>
-                    <div className="text-xs text-secondary-900">{call.date}</div>
-                    <div className="text-xs text-secondary-500">{call.time} • {call.duration}</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <IndianRupee className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                  <span className="text-xs text-secondary-900">{formatCurrency(call.spendInr)}</span>
-                </div>
-
-              </div>
-              
-              {getQualificationBadge(call.leadQualification) && (
-                <div className="pt-2 border-t border-secondary-100">
-                  {getQualificationBadge(call.leadQualification)}
-                </div>
-              )}
-
-              {call.recommendedAction && (
-                <div className="mt-3 pt-3 border-t border-secondary-100 text-xs font-semibold text-primary-600">
-                  Action: {call.recommendedAction}
-                </div>
-              )}
+          <div className="md:hidden space-y-3">
+            <div className="mb-3">
+              <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
+              <p className="text-xs text-secondary-500 mt-0.5">Tap on any call to view details</p>
             </div>
-          ))}
-        </div>
+            {displayCalls.map((call) => (
+              <div
+                key={call.id}
+                onClick={() => onSelectCall(call)}
+                className="card p-4 cursor-pointer active:bg-secondary-50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-2 flex-1 min-w-0">
+                    {getStatusIcon(call.status)}
+                    <span className="text-sm font-medium text-secondary-900 truncate">{call.id}</span>
+                  </div>
+                  {getStatusBadge(call.status)}
+                </div>
+
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center space-x-2">
+                    <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                    <span className="text-sm text-secondary-900">{call.phoneNumber}</span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                    <div>
+                      <div className="text-xs text-secondary-900">{call.date}</div>
+                      <div className="text-xs text-secondary-500">{call.time} • {call.duration}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <IndianRupee className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                    <span className="text-xs text-secondary-900">{formatCurrency(call.spendInr)}</span>
+                  </div>
+
+                </div>
+
+                {getQualificationBadge(call.leadQualification) && (
+                  <div className="pt-2 border-t border-secondary-100">
+                    {getQualificationBadge(call.leadQualification)}
+                  </div>
+                )}
+
+                {call.recommendedAction && (
+                  <div className="mt-3 pt-3 border-t border-secondary-100 text-xs font-semibold text-primary-600">
+                    Action: {call.recommendedAction}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
 
         {/* Empty State */}
@@ -510,26 +521,79 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
         )}
 
         {/* Pagination Controls */}
-        {!loading && pagination.totalPages > 1 && (
-          <div className="card p-4 mt-6">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-secondary-600">
-                Showing page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalRecords} total records)
+        {!loading && (pagination.totalPages > 1 || pagination.totalRecords > pagination.limit) && (
+          <div className="card p-4 sm:p-6 mt-6 border-2 border-primary-200 bg-primary-50">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm sm:text-base font-medium text-secondary-700">
+                Showing <span className="font-bold text-primary-700">{((pagination.currentPage - 1) * pagination.limit) + 1}</span> to <span className="font-bold text-primary-700">{Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)}</span> of <span className="font-bold text-primary-700">{pagination.totalRecords}</span> total records
+                {pagination.totalPages > 1 && (
+                  <span className="text-secondary-600 ml-2">(Page {pagination.currentPage} of {pagination.totalPages})</span>
+                )}
               </div>
               <div className="flex items-center space-x-2">
                 <button
+                  onClick={() => handlePageChange(1)}
+                  disabled={pagination.currentPage === 1}
+                  className="px-3 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="First page"
+                >
+                  First
+                </button>
+                <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={pagination.currentPage === 1}
-                  className="btn-secondary px-3 py-2 text-sm disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Previous page"
                 >
                   Previous
                 </button>
+
+                {/* Page Number Buttons */}
+                {pagination.totalPages > 1 && (
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (pagination.totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pagination.currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                        pageNum = pagination.totalPages - 4 + i;
+                      } else {
+                        pageNum = pagination.currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${pagination.currentPage === pageNum
+                              ? 'bg-primary-600 text-white border-primary-600'
+                              : 'bg-white text-secondary-700 border-secondary-300 hover:bg-secondary-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  disabled={pagination.currentPage === pagination.totalPages}
-                  className="btn-primary px-3 py-2 text-sm disabled:opacity-50"
+                  disabled={pagination.currentPage >= pagination.totalPages}
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Next page"
                 >
                   Next
+                </button>
+                <button
+                  onClick={() => handlePageChange(pagination.totalPages)}
+                  disabled={pagination.currentPage >= pagination.totalPages}
+                  className="px-3 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Last page"
+                >
+                  Last
                 </button>
               </div>
             </div>

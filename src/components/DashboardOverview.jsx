@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, CalendarRange, Download, Home, Target, TrendingUp, Loader2, AlertCircle, Phone, Clock, PlayCircle } from 'lucide-react'
 import { getDashboardOverview, getDashboardMetrics, downloadDashboardExport, getCalls, getAnalyticsSummary } from '../api'
 
@@ -16,6 +16,13 @@ const DashboardOverview = ({ onBack, onHome }) => {
     startDate: '',
     endDate: ''
   })
+  const [callsPagination, setCallsPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 20
+  })
+  const isRangeChanging = useRef(false)
 
   const rangeLabels = ['total', 'weekly', 'monthly', 'custom']
 
@@ -31,24 +38,70 @@ const DashboardOverview = ({ onBack, onHome }) => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
+  const fetchCallsData = async () => {
+    try {
+      const calls = await getCalls({
+        page: callsPagination.currentPage,
+        limit: callsPagination.limit
+      })
+
+      if (calls) {
+        const totalRecords = calls.totalRecords || 0
+        const limit = calls.limit || 20
+        let totalPages = calls.totalPages || 1
+        if (totalRecords > 0 && limit > 0) {
+          const calculatedPages = Math.ceil(totalRecords / limit)
+          if (!calls.totalPages || calculatedPages > totalPages) {
+            totalPages = calculatedPages
+          }
+        }
+
+        setCallsData(calls)
+        setCallsPagination(prev => ({
+          currentPage: calls.currentPage || prev.currentPage,
+          totalPages: totalPages,
+          totalRecords: totalRecords,
+          limit: limit
+        }))
+      }
+    } catch (err) {
+      console.warn('Failed to fetch calls data:', err.message)
+    }
+  }
+
   // Fetch dashboard data when range changes
   useEffect(() => {
+    isRangeChanging.current = true
+    setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
     fetchDashboardData()
   }, [range])
+
+  // Fetch calls when pagination changes (but not when range is changing)
+  useEffect(() => {
+    // Skip if we're changing range (calls will be fetched in fetchDashboardData)
+    if (isRangeChanging.current) {
+      isRangeChanging.current = false
+      return
+    }
+    // Only fetch if we're not in the initial loading state and page is valid
+    if (!loading && callsPagination.currentPage > 0) {
+      fetchCallsData()
+    }
+  }, [callsPagination.currentPage])
 
   const fetchDashboardData = async () => {
     setLoading(true)
     setError('')
-    
+
     try {
       const params = { range }
-      
+
       // Add custom date range if selected
       if (range === 'custom' && customDates.startDate && customDates.endDate) {
         params.startDate = customDates.startDate
         params.endDate = customDates.endDate
       }
-      
+
       // Fetch overview, metrics, calls, and analytics data
       const [overview, metrics, calls, analytics] = await Promise.all([
         getDashboardOverview(params).catch((err) => {
@@ -59,7 +112,7 @@ const DashboardOverview = ({ onBack, onHome }) => {
           console.warn('Failed to fetch metrics data:', err.message)
           return null
         }),
-        getCalls({ page: 1, limit: 10 }).catch((err) => {
+        getCalls({ page: callsPagination.currentPage, limit: callsPagination.limit }).catch((err) => {
           console.warn('Failed to fetch calls data:', err.message)
           return null
         }),
@@ -68,10 +121,33 @@ const DashboardOverview = ({ onBack, onHome }) => {
           return null
         })
       ])
-      
+
       setOverviewData(overview)
       setMetricsData(metrics)
-      setCallsData(calls)
+
+      // Update calls data and pagination
+      if (calls) {
+        const totalRecords = calls.totalRecords || 0
+        const limit = calls.limit || 20
+        let totalPages = calls.totalPages || 1
+        if (totalRecords > 0 && limit > 0) {
+          const calculatedPages = Math.ceil(totalRecords / limit)
+          if (!calls.totalPages || calculatedPages > totalPages) {
+            totalPages = calculatedPages
+          }
+        }
+
+        setCallsData(calls)
+        setCallsPagination({
+          currentPage: calls.currentPage || 1,
+          totalPages: totalPages,
+          totalRecords: totalRecords,
+          limit: limit
+        })
+      } else {
+        setCallsData(null)
+      }
+
       setAnalyticsData(analytics)
     } catch (err) {
       setError(err.message || 'Failed to load dashboard data')
@@ -85,12 +161,12 @@ const DashboardOverview = ({ onBack, onHome }) => {
     setExporting(true)
     try {
       const exportParams = { range }
-      
+
       if (range === 'custom' && customDates.startDate && customDates.endDate) {
         exportParams.startDate = customDates.startDate
         exportParams.endDate = customDates.endDate
       }
-      
+
       const filename = `dashboard-${range}-${new Date().toISOString().split('T')[0]}.xlsx`
       await downloadDashboardExport(exportParams, filename)
     } catch (err) {
@@ -110,8 +186,13 @@ const DashboardOverview = ({ onBack, onHome }) => {
   const handleCustomDateSubmit = () => {
     if (customDates.startDate && customDates.endDate) {
       setShowDatePicker(false)
+      setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
       fetchDashboardData()
     }
+  }
+
+  const handleCallsPageChange = (newPage) => {
+    setCallsPagination(prev => ({ ...prev, currentPage: newPage }))
   }
 
   // Helper function to format call duration from seconds to mm:ss
@@ -126,30 +207,30 @@ const DashboardOverview = ({ onBack, onHome }) => {
   const getFormattedMetrics = () => {
     const dataSource = analyticsData || overviewData
     if (!dataSource) return []
-    
+
     return [
-      { 
-        label: 'Total Calls', 
+      {
+        label: 'Total Calls',
         value: dataSource.totalCalls?.toLocaleString() || '0'
       },
-      { 
-        label: 'Total Minutes', 
+      {
+        label: 'Total Minutes',
         value: dataSource.totalMinutes?.toLocaleString() || '0'
       },
-      { 
-        label: 'Avg Call Time', 
+      {
+        label: 'Avg Call Time',
         value: analyticsData ? formatAvgCallTime(analyticsData.avgCallTime) : (dataSource.avgCallDuration || '0:00')
       },
-      { 
-        label: 'Total Spend', 
+      {
+        label: 'Total Spend',
         value: dataSource.totalSpend ? `₹ ${parseFloat(dataSource.totalSpend).toLocaleString()}` : '₹ 0'
       },
-      { 
-        label: 'Successful Calls', 
+      {
+        label: 'Successful Calls',
         value: dataSource.successfulCalls?.toLocaleString() || '0'
       },
-      { 
-        label: 'Success Rate', 
+      {
+        label: 'Success Rate',
         value: dataSource.successRate ? `${dataSource.successRate}%` : '0%'
       }
     ]
@@ -183,14 +264,14 @@ const DashboardOverview = ({ onBack, onHome }) => {
               </div>
             </div>
             <div className="flex items-center space-x-2 flex-shrink-0">
-              <button 
+              <button
                 onClick={() => setShowDatePicker(!showDatePicker)}
                 className="btn-secondary inline-flex items-center space-x-2 text-sm p-2 sm:px-4"
               >
                 <CalendarRange className="w-4 h-4" />
                 <span className="hidden sm:inline">Date Filter</span>
               </button>
-              <button 
+              <button
                 onClick={handleExport}
                 disabled={exporting || loading}
                 className="btn-primary inline-flex items-center space-x-2 text-sm p-2 sm:px-4 disabled:opacity-50"
@@ -216,7 +297,7 @@ const DashboardOverview = ({ onBack, onHome }) => {
               <div>
                 <p className="text-sm font-medium text-red-800">Error loading dashboard</p>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
-                <button 
+                <button
                   onClick={fetchDashboardData}
                   className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium"
                 >
@@ -252,14 +333,14 @@ const DashboardOverview = ({ onBack, onHome }) => {
               </div>
             </div>
             <div className="flex items-center space-x-3 mt-4">
-              <button 
+              <button
                 onClick={handleCustomDateSubmit}
                 disabled={!customDates.startDate || !customDates.endDate}
                 className="btn-primary disabled:opacity-50"
               >
                 Apply Date Range
               </button>
-              <button 
+              <button
                 onClick={() => setShowDatePicker(false)}
                 className="btn-secondary"
               >
@@ -291,11 +372,10 @@ const DashboardOverview = ({ onBack, onHome }) => {
                   key={label}
                   onClick={() => handleRangeChange(label)}
                   disabled={loading}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide disabled:opacity-50 ${
-                    range === label
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide disabled:opacity-50 ${range === label
                       ? 'bg-primary-600 text-white shadow-sm'
                       : 'bg-secondary-100 text-secondary-600 hover:text-secondary-900'
-                  }`}
+                    }`}
                 >
                   {label}
                 </button>
@@ -353,8 +433,8 @@ const DashboardOverview = ({ onBack, onHome }) => {
                     </div>
                   </div>
                 )) || (
-                  <p className="text-sm text-secondary-500 text-center py-4">No data available</p>
-                )}
+                    <p className="text-sm text-secondary-500 text-center py-4">No data available</p>
+                  )}
               </div>
             </div>
 
@@ -381,8 +461,8 @@ const DashboardOverview = ({ onBack, onHome }) => {
                     </div>
                   </div>
                 )) || (
-                  <p className="text-sm text-secondary-500 text-center py-4">No data available</p>
-                )}
+                    <p className="text-sm text-secondary-500 text-center py-4">No data available</p>
+                  )}
               </div>
             </div>
 
@@ -395,57 +475,134 @@ const DashboardOverview = ({ onBack, onHome }) => {
                 </div>
                 <Phone className="w-5 h-5 text-primary-600" />
               </div>
-              
+
               {callsData?.calls?.length > 0 ? (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {callsData.calls.map((call) => (
-                    <div key={call._id} className="flex items-center justify-between border-b border-secondary-100 pb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            call.status === 'ANSWERED' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {call.status}
-                          </span>
-                          <span className="text-sm font-medium text-secondary-900">{call.cnum}</span>
-                        </div>
-                        <p className="text-xs text-secondary-500">
-                          {formatDate(call.start)} • VMN: {call.vmn}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-3 flex-shrink-0">
-                        <div className="text-right">
-                          <div className="flex items-center space-x-1 text-xs text-secondary-600">
-                            <Clock className="w-3 h-3" />
-                            <span>{formatDuration(call.duration)}</span>
+                <>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {callsData.calls.map((call) => (
+                      <div key={call._id} className="flex items-center justify-between border-b border-secondary-100 pb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.status === 'ANSWERED'
+                                ? 'bg-green-100 text-green-800'
+                                : call.status === 'BUSY'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : call.status === 'NO_ANSWER'
+                                    ? 'bg-orange-100 text-orange-800'
+                                    : 'bg-red-100 text-red-800'
+                              }`}>
+                              {call.status}
+                            </span>
+                            <span className="text-sm font-medium text-secondary-900">{call.cnum}</span>
                           </div>
-                          <p className="text-xs text-secondary-500">Duration</p>
+                          <p className="text-xs text-secondary-500">
+                            {formatDate(call.start)} • VMN: {call.vmn}
+                          </p>
                         </div>
-                        {call.recordingUrl && (
+                        <div className="flex items-center space-x-3 flex-shrink-0">
+                          <div className="text-right">
+                            <div className="flex items-center space-x-1 text-xs text-secondary-600">
+                              <Clock className="w-3 h-3" />
+                              <span>{formatDuration(call.duration)}</span>
+                            </div>
+                            <p className="text-xs text-secondary-500">Duration</p>
+                          </div>
+                          {call.recordingUrl && (
+                            <button
+                              onClick={() => window.open(call.recordingUrl, '_blank')}
+                              className="p-1 hover:bg-primary-50 rounded-lg transition-colors"
+                              title="Play Recording"
+                            >
+                              <PlayCircle className="w-4 h-4 text-primary-600" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {(callsPagination.totalPages > 1 || callsPagination.totalRecords > callsPagination.limit) && (
+                    <div className="pt-4 mt-4 border-t border-secondary-200 bg-primary-50 rounded-lg p-4">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="text-sm sm:text-base font-medium text-secondary-700">
+                          Showing <span className="font-bold text-primary-700">{((callsPagination.currentPage - 1) * callsPagination.limit) + 1}</span> to <span className="font-bold text-primary-700">{Math.min(callsPagination.currentPage * callsPagination.limit, callsPagination.totalRecords)}</span> of <span className="font-bold text-primary-700">{callsPagination.totalRecords}</span> total calls
+                          {callsPagination.totalPages > 1 && (
+                            <span className="text-secondary-600 ml-2">(Page {callsPagination.currentPage} of {callsPagination.totalPages})</span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => window.open(call.recordingUrl, '_blank')}
-                            className="p-1 hover:bg-primary-50 rounded-lg transition-colors"
-                            title="Play Recording"
+                            onClick={() => handleCallsPageChange(1)}
+                            disabled={callsPagination.currentPage === 1}
+                            className="px-3 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="First page"
                           >
-                            <PlayCircle className="w-4 h-4 text-primary-600" />
+                            First
                           </button>
-                        )}
+                          <button
+                            onClick={() => handleCallsPageChange(callsPagination.currentPage - 1)}
+                            disabled={callsPagination.currentPage === 1}
+                            className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Previous page"
+                          >
+                            Previous
+                          </button>
+
+                          {/* Page Number Buttons */}
+                          {callsPagination.totalPages > 1 && (
+                            <div className="flex items-center space-x-1">
+                              {Array.from({ length: Math.min(5, callsPagination.totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (callsPagination.totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (callsPagination.currentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (callsPagination.currentPage >= callsPagination.totalPages - 2) {
+                                  pageNum = callsPagination.totalPages - 4 + i;
+                                } else {
+                                  pageNum = callsPagination.currentPage - 2 + i;
+                                }
+
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    onClick={() => handleCallsPageChange(pageNum)}
+                                    className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${callsPagination.currentPage === pageNum
+                                      ? 'bg-primary-600 text-white border-primary-600'
+                                      : 'bg-white text-secondary-700 border-secondary-300 hover:bg-secondary-50'
+                                      }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => handleCallsPageChange(callsPagination.currentPage + 1)}
+                            disabled={callsPagination.currentPage >= callsPagination.totalPages}
+                            className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Next page"
+                          >
+                            Next
+                          </button>
+                          <button
+                            onClick={() => handleCallsPageChange(callsPagination.totalPages)}
+                            disabled={callsPagination.currentPage >= callsPagination.totalPages}
+                            className="px-3 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Last page"
+                          >
+                            Last
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-secondary-500 text-center py-8">No calls available</p>
-              )}
-              
-              {callsData?.totalRecords > 10 && (
-                <div className="text-center pt-2 border-t border-secondary-100">
-                  <p className="text-xs text-secondary-500">
-                    Showing latest 10 of {callsData.totalRecords} total calls
-                  </p>
-                </div>
               )}
             </div>
           </div>
