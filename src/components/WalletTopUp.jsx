@@ -52,19 +52,19 @@ const WalletTopUp = ({ onBack, onHome }) => {
           <div className="card p-4 space-y-2">
             <Wallet className="w-5 h-5 text-primary-600" />
             <p className="text-xs uppercase tracking-wide text-secondary-500">Current Balance</p>
-            <h3 className="text-2xl font-semibold text-secondary-900">{formatCurrency(18900)}</h3>
-            <p className="text-xs text-secondary-500">Enough for ~5,400 AI minutes</p>
+            <h3 className="text-2xl font-semibold text-secondary-900">NA</h3>
+            <p className="text-xs text-secondary-500">NA</p>
           </div>
           <div className="card p-4 space-y-2">
             <TrendingUp className="w-5 h-5 text-primary-600" />
             <p className="text-xs uppercase tracking-wide text-secondary-500">Avg Daily Spend</p>
-            <h3 className="text-2xl font-semibold text-secondary-900">{formatCurrency(6200)}</h3>
+            <h3 className="text-2xl font-semibold text-secondary-900">NA</h3>
             <p className="text-xs text-secondary-500">Includes inbound + outbound usage</p>
           </div>
           <div className="card p-4 space-y-2">
             <ShieldCheck className="w-5 h-5 text-primary-600" />
             <p className="text-xs uppercase tracking-wide text-secondary-500">Auto-Top Up</p>
-            <h3 className="text-lg font-semibold text-secondary-900">Enabled at ₹10,000</h3>
+            <h3 className="text-lg font-semibold text-secondary-900">NA</h3>
             <p className="text-xs text-secondary-500">Pause anytime from billing settings</p>
           </div>
         </div>
@@ -83,9 +83,8 @@ const WalletTopUp = ({ onBack, onHome }) => {
                   setSelectedAmount(amount)
                   setCustomAmount('')
                 }}
-                className={`border rounded-xl p-3 text-left hover:border-primary-400 transition-colors ${
-                  selectedAmount === amount && customAmount === '' ? 'border-primary-500 bg-primary-50' : 'border-secondary-200'
-                }`}
+                className={`border rounded-xl p-3 text-left hover:border-primary-400 transition-colors ${selectedAmount === amount && customAmount === '' ? 'border-primary-500 bg-primary-50' : 'border-secondary-200'
+                  }`}
               >
                 <p className="text-xs text-secondary-500">Recharge</p>
                 <p className="text-lg font-semibold text-secondary-900">{formatCurrency(amount)}</p>
@@ -118,7 +117,7 @@ const WalletTopUp = ({ onBack, onHome }) => {
                 <CreditCard className="w-4 h-4 text-primary-600" />
                 <p className="text-sm font-semibold text-secondary-900">Payment Method</p>
               </div>
-              <p className="text-xs text-secondary-500">Visa •••• 2244 (Auto Top-up)</p>
+              <p className="text-xs text-secondary-500">NA</p>
               <button className="btn-secondary w-full text-sm">Change / Add Card</button>
             </div>
 

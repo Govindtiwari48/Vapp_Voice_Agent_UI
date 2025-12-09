@@ -21,11 +21,8 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     },
     // Voice agent settings
     voiceAgentSettings: {
-      agentName: '',
-      language: 'en-US',
-      voiceType: 'neural',
-      greetingMessage: '',
-      fallbackMessage: ''
+      agentType: 'neural',
+      language: 'en-US'
     },
     // Lead qualification settings
     leadQualification: {
@@ -263,11 +260,6 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     if (formData.callSchedule.enabled && formData.callSchedule.daysOfWeek.length === 0) {
       newErrors.callScheduleDays = 'Select at least one day for call schedule'
       console.log('Validation Error: Call schedule days required')
-    }
-
-    if (!formData.voiceAgentSettings.agentName.trim()) {
-      newErrors.agentName = 'Agent name is required'
-      console.log('Validation Error: Agent name is required')
     }
 
     // For outgoing campaigns, validate phone numbers
@@ -836,25 +828,23 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
             <h2 className="text-lg font-semibold text-secondary-900 mb-4">Voice Agent Settings</h2>
 
             <div className="space-y-4">
-              <div>
-                <label htmlFor="agentName" className="block text-sm font-medium text-secondary-700 mb-1">
-                  Agent Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="agentName"
-                  name="voiceAgentSettings.agentName"
-                  value={formData.voiceAgentSettings.agentName}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${errors.agentName ? 'border-red-500' : 'border-secondary-300'
-                    }`}
-                  placeholder="e.g., Sarah, Premium Properties"
-                  required
-                />
-                {errors.agentName && <p className="mt-1 text-sm text-red-600">{errors.agentName}</p>}
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="agentType" className="block text-sm font-medium text-secondary-700 mb-1">
+                    Agent Type
+                  </label>
+                  <select
+                    id="agentType"
+                    name="voiceAgentSettings.agentType"
+                    value={formData.voiceAgentSettings.agentType}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="neural">Neural (Recommended)</option>
+                    <option value="standard">Standard</option>
+                  </select>
+                </div>
+
                 <div>
                   <label htmlFor="language" className="block text-sm font-medium text-secondary-700 mb-1">
                     Language
@@ -873,52 +863,6 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                     <option value="de-DE">German</option>
                   </select>
                 </div>
-
-                <div>
-                  <label htmlFor="voiceType" className="block text-sm font-medium text-secondary-700 mb-1">
-                    Voice Type
-                  </label>
-                  <select
-                    id="voiceType"
-                    name="voiceAgentSettings.voiceType"
-                    value={formData.voiceAgentSettings.voiceType}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="neural">Neural (Recommended)</option>
-                    <option value="standard">Standard</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="greetingMessage" className="block text-sm font-medium text-secondary-700 mb-1">
-                  Greeting Message
-                </label>
-                <textarea
-                  id="greetingMessage"
-                  name="voiceAgentSettings.greetingMessage"
-                  value={formData.voiceAgentSettings.greetingMessage}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Custom greeting message for the voice agent..."
-                />
-              </div>
-
-              <div>
-                <label htmlFor="fallbackMessage" className="block text-sm font-medium text-secondary-700 mb-1">
-                  Fallback Message
-                </label>
-                <textarea
-                  id="fallbackMessage"
-                  name="voiceAgentSettings.fallbackMessage"
-                  value={formData.voiceAgentSettings.fallbackMessage}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Message to use when the agent cannot understand the request..."
-                />
               </div>
             </div>
           </div>
