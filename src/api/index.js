@@ -143,7 +143,7 @@ export const getCalls = async (params = {}) => {
         });
 
         const result = await handleResponse(response);
-        
+
         // Handle the new API response format
         if (result.success && result.data) {
             return {
@@ -154,7 +154,7 @@ export const getCalls = async (params = {}) => {
                 limit: result.data.pagination?.limit || 20
             };
         }
-        
+
         return {
             calls: [],
             currentPage: 1,
@@ -319,11 +319,11 @@ export const getAnalyticsSummary = async () => {
         });
 
         const result = await handleResponse(response);
-        
+
         if (result.success && result.data) {
             return result.data;
         }
-        
+
         throw new Error('Invalid analytics data format');
     } catch (error) {
         return handleError(error);
@@ -378,9 +378,31 @@ export const formatDateTimeForAPI = (date) => {
 };
 
 /**
+ * Format start date for API (ISO 8601 with time set to 00:00:00.000Z)
+ * @param {Date|string} date - Date object or date string (YYYY-MM-DD)
+ * @returns {string} Formatted datetime string with time 00:00:00.000Z
+ */
+export const formatStartDateForAPI = (date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    return startOfDay.toISOString();
+};
+
+/**
+ * Format end date for API (ISO 8601 with time set to 23:59:59.999Z)
+ * @param {Date|string} date - Date object or date string (YYYY-MM-DD)
+ * @returns {string} Formatted datetime string with time 23:59:59.999Z
+ */
+export const formatEndDateForAPI = (date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23, 59, 59, 999);
+    return endOfDay.toISOString();
+};
+
+/**
  * Get date range for predefined periods
  * @param {string} period - Period type (today, yesterday, last7, last15, last30, weekly, monthly)
- * @returns {Object} Object with startDate and endDate
+ * @returns {Object} Object with startDate and endDate in ISO 8601 format
  */
 export const getDateRange = (period) => {
     const now = new Date();
@@ -389,16 +411,16 @@ export const getDateRange = (period) => {
     switch (period) {
         case 'today':
             return {
-                startDate: formatDateTimeForAPI(today),
-                endDate: formatDateTimeForAPI(now)
+                startDate: formatStartDateForAPI(today),
+                endDate: formatEndDateForAPI(today)
             };
 
         case 'yesterday':
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
             return {
-                startDate: formatDateTimeForAPI(yesterday),
-                endDate: formatDateTimeForAPI(today)
+                startDate: formatStartDateForAPI(yesterday),
+                endDate: formatEndDateForAPI(yesterday)
             };
 
         case 'last7':
@@ -406,16 +428,16 @@ export const getDateRange = (period) => {
             const last7 = new Date(today);
             last7.setDate(last7.getDate() - 7);
             return {
-                startDate: formatDateTimeForAPI(last7),
-                endDate: formatDateTimeForAPI(now)
+                startDate: formatStartDateForAPI(last7),
+                endDate: formatEndDateForAPI(today)
             };
 
         case 'last15':
             const last15 = new Date(today);
             last15.setDate(last15.getDate() - 15);
             return {
-                startDate: formatDateTimeForAPI(last15),
-                endDate: formatDateTimeForAPI(now)
+                startDate: formatStartDateForAPI(last15),
+                endDate: formatEndDateForAPI(today)
             };
 
         case 'last30':
@@ -423,8 +445,8 @@ export const getDateRange = (period) => {
             const last30 = new Date(today);
             last30.setDate(last30.getDate() - 30);
             return {
-                startDate: formatDateTimeForAPI(last30),
-                endDate: formatDateTimeForAPI(now)
+                startDate: formatStartDateForAPI(last30),
+                endDate: formatEndDateForAPI(today)
             };
 
         default:

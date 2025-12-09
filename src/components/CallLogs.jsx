@@ -9,9 +9,11 @@ import {
   IndianRupee,
   Phone,
   XCircle,
-  Loader2
+  Loader2,
+  X,
+  Filter
 } from 'lucide-react'
-import { getCalls, getDateRange, downloadDashboardExport } from '../api'
+import { getCalls, getDateRange, downloadDashboardExport, formatStartDateForAPI, formatEndDateForAPI } from '../api'
 import StatusFilter from './StatusFilter'
 
 const filterOptions = [
@@ -74,8 +76,10 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           params.endDate = dateRange.endDate
         }
       } else if (customDates.startDate && customDates.endDate) {
-        params.startDate = new Date(customDates.startDate).toISOString()
-        params.endDate = new Date(customDates.endDate).toISOString()
+        // Format custom dates with proper time boundaries
+        // Start date: 00:00:00.000Z, End date: 23:59:59.999Z
+        params.startDate = formatStartDateForAPI(customDates.startDate)
+        params.endDate = formatEndDateForAPI(customDates.endDate)
       }
 
       // Add status filter if selected
@@ -123,6 +127,30 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   const handleStatusFilterChange = (status) => {
     setStatusFilter(status)
     setPagination({ ...pagination, currentPage: 1 })
+  }
+
+  const handleClearFilters = () => {
+    setActiveFilter('today')
+    setStatusFilter('')
+    setCustomDates({ startDate: '', endDate: '' })
+    setShowCustomDatePicker(false)
+    setPagination({ ...pagination, currentPage: 1 })
+  }
+
+  // Check if any filters are active
+  const hasActiveFilters = activeFilter !== 'today' || statusFilter !== ''
+
+  // Get active filter label
+  const getActiveFilterLabel = () => {
+    const filter = filterOptions.find(f => f.value === activeFilter)
+    return filter ? filter.label : 'Custom'
+  }
+
+  // Get active status label
+  const getActiveStatusLabel = () => {
+    if (!statusFilter) return null
+    const status = statusFilterOptions.find(s => s.value === statusFilter)
+    return status ? status.label : statusFilter
   }
 
   const handleCustomDateSubmit = () => {
@@ -345,6 +373,47 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
               <p className="text-lg sm:text-xl font-semibold text-secondary-900 break-words">{campaign.allocatedDid || 'Not assigned'}</p>
             </div>
             <div className="flex flex-col gap-3">
+              {/* Active Filters Summary */}
+              {hasActiveFilters && (
+                <div className="flex flex-wrap items-center gap-2 p-2 bg-primary-50 rounded-lg border border-primary-200">
+                  <Filter className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                  <span className="text-xs font-medium text-primary-700">Active Filters:</span>
+                  {activeFilter !== 'today' && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800 border border-primary-300">
+                      Date: {getActiveFilterLabel()}
+                      {activeFilter === 'custom' && customDates.startDate && customDates.endDate && (
+                        <span className="ml-1 text-primary-600">
+                          ({new Date(customDates.startDate).toLocaleDateString()} - {new Date(customDates.endDate).toLocaleDateString()})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {statusFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800 border border-primary-300">
+                      Status: {getActiveStatusLabel()}
+                    </span>
+                  )}
+                  <button
+                    onClick={handleClearFilters}
+                    className="ml-auto inline-flex items-center space-x-1 px-2 py-1 text-xs font-medium text-primary-700 hover:text-primary-900 hover:bg-primary-100 rounded transition-colors"
+                    title="Clear all filters"
+                  >
+                    <X className="w-3 h-3" />
+                    <span>Clear All</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Info Banner - Show when no filters are active */}
+              {!hasActiveFilters && (
+                <div className="flex items-start gap-2 p-2 bg-secondary-50 rounded-lg border border-secondary-200">
+                  <AlertCircle className="w-4 h-4 text-secondary-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-secondary-600">
+                    <span className="font-medium">Tip:</span> Combine date and status filters to refine your search. Select a date range and status to see filtered results.
+                  </p>
+                </div>
+              )}
+
               {/* Filters Row */}
               <div className="flex flex-wrap gap-2 items-center">
                 <div className="flex flex-wrap gap-2">
@@ -353,9 +422,9 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                       key={filter.value}
                       onClick={() => handleFilterChange(filter.value)}
                       disabled={loading}
-                      className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation disabled:opacity-50 ${activeFilter === filter.value
-                        ? 'bg-primary-600 text-white border-primary-600'
-                        : 'border-secondary-200 text-secondary-600 hover:text-secondary-900 active:bg-secondary-50'
+                      className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation disabled:opacity-50 transition-all ${activeFilter === filter.value
+                        ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                        : 'border-secondary-200 text-secondary-600 hover:text-secondary-900 hover:border-secondary-300 active:bg-secondary-50'
                         }`}
                     >
                       {filter.label}
@@ -371,6 +440,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                   className="flex-shrink-0"
                 />
               </div>
+
               {/* Download Button Row */}
               <div className="flex justify-end">
                 <button
