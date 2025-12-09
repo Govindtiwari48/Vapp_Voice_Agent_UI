@@ -1,4 +1,4 @@
-import { 
+import {
   AlertCircle,
   ArrowLeft,
   Calendar,
@@ -71,7 +71,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">Call Details</h1>
                 <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                  {campaign.name} • {call.id}
+                  {campaign?.name || 'NA'} • {call?.id || 'NA'}
                 </p>
               </div>
             </div>
@@ -90,22 +90,24 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                 <Phone className="w-5 h-5 mr-2 text-primary-600 flex-shrink-0" />
                 Call Overview
               </h2>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Phone Number</p>
                     <div className="flex items-center space-x-2">
                       <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                      <p className="text-sm font-medium text-secondary-900 break-all">{call.phoneNumber}</p>
+                      <p className="text-sm font-medium text-secondary-900 break-all">{call.phoneNumber || 'NA'}</p>
                     </div>
                   </div>
-                  
+
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Date & Time</p>
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                      <p className="text-sm text-secondary-900 break-words">{call.date} at {call.time}</p>
+                      <p className="text-sm text-secondary-900 break-words">
+                        {call.date && call.time ? `${call.date} at ${call.time}` : (call.date || call.time || 'NA')}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -115,23 +117,27 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <p className="text-xs text-secondary-500 mb-1">Duration</p>
                     <div className="flex items-center space-x-2">
                       <Clock className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                      <p className="text-sm font-medium text-secondary-900">{call.duration}</p>
+                      <p className="text-sm font-medium text-secondary-900">{call.duration || 'NA'}</p>
                     </div>
                   </div>
-                  
+
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Status</p>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(call.status)}`}>
-                      {call.status === 'completed' ? <CheckCircle className="w-3 h-3 mr-1 flex-shrink-0" /> : <AlertCircle className="w-3 h-3 mr-1 flex-shrink-0" />}
-                      {call.status.charAt(0).toUpperCase() + call.status.slice(1)}
-                    </span>
+                    {call.status ? (
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(call.status)}`}>
+                        {call.status === 'completed' ? <CheckCircle className="w-3 h-3 mr-1 flex-shrink-0" /> : <AlertCircle className="w-3 h-3 mr-1 flex-shrink-0" />}
+                        {call.status.charAt(0).toUpperCase() + call.status.slice(1)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-secondary-600">NA</span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {call.recordingUrl && (
-                <div className="mt-4 pt-4 border-t border-secondary-200">
-                  <p className="text-xs text-secondary-500 mb-2">Voice Recording</p>
+              <div className="mt-4 pt-4 border-t border-secondary-200">
+                <p className="text-xs text-secondary-500 mb-2">Voice Recording</p>
+                {call.recordingUrl ? (
                   <div className="flex items-center space-x-3 bg-secondary-50 p-3 rounded-lg">
                     <button className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors">
                       <Play className="w-4 h-4 text-white" />
@@ -143,8 +149,10 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     </div>
                     <span className="text-xs text-secondary-500">{call.duration}</span>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-sm text-secondary-600">NA</p>
+                )}
+              </div>
             </div>
 
             {/* Lead Keywords & Qualification */}
@@ -153,75 +161,61 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                 <Tag className="w-5 h-5 mr-2 text-primary-600 flex-shrink-0" />
                 Lead Information & Keywords
               </h2>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                {call.keywords?.budget && (
-                  <div className="bg-secondary-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <DollarSign className="w-4 h-4 text-green-600" />
-                      <p className="text-xs font-medium text-secondary-500 uppercase">Budget</p>
-                    </div>
-                    <p className="text-sm font-semibold text-secondary-900">{call.keywords.budget}</p>
+                <div className="bg-secondary-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <DollarSign className="w-4 h-4 text-green-600" />
+                    <p className="text-xs font-medium text-secondary-500 uppercase">Budget</p>
                   </div>
-                )}
+                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.budget || 'NA'}</p>
+                </div>
 
-                {call.keywords?.location && (
-                  <div className="bg-secondary-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <MapPin className="w-4 h-4 text-red-600" />
-                      <p className="text-xs font-medium text-secondary-500 uppercase">Location</p>
-                    </div>
-                    <p className="text-sm font-semibold text-secondary-900">{call.keywords.location}</p>
+                <div className="bg-secondary-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <MapPin className="w-4 h-4 text-red-600" />
+                    <p className="text-xs font-medium text-secondary-500 uppercase">Location</p>
                   </div>
-                )}
+                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.location || 'NA'}</p>
+                </div>
 
-                {call.keywords?.bedrooms && (
-                  <div className="bg-secondary-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Bed className="w-4 h-4 text-blue-600" />
-                      <p className="text-xs font-medium text-secondary-500 uppercase">Bedrooms</p>
-                    </div>
-                    <p className="text-sm font-semibold text-secondary-900">{call.keywords.bedrooms}</p>
+                <div className="bg-secondary-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Bed className="w-4 h-4 text-blue-600" />
+                    <p className="text-xs font-medium text-secondary-500 uppercase">Bedrooms</p>
                   </div>
-                )}
+                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.bedrooms || 'NA'}</p>
+                </div>
 
-                {call.keywords?.propertyType && (
-                  <div className="bg-secondary-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <HomeIcon className="w-4 h-4 text-purple-600" />
-                      <p className="text-xs font-medium text-secondary-500 uppercase">Property Type</p>
-                    </div>
-                    <p className="text-sm font-semibold text-secondary-900">{call.keywords.propertyType}</p>
+                <div className="bg-secondary-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <HomeIcon className="w-4 h-4 text-purple-600" />
+                    <p className="text-xs font-medium text-secondary-500 uppercase">Property Type</p>
                   </div>
-                )}
+                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.propertyType || 'NA'}</p>
+                </div>
 
-                {call.keywords?.moveInDate && (
-                  <div className="bg-secondary-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Calendar className="w-4 h-4 text-orange-600" />
-                      <p className="text-xs font-medium text-secondary-500 uppercase">Move-in Date</p>
-                    </div>
-                    <p className="text-sm font-semibold text-secondary-900">{call.keywords.moveInDate}</p>
+                <div className="bg-secondary-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Calendar className="w-4 h-4 text-orange-600" />
+                    <p className="text-xs font-medium text-secondary-500 uppercase">Move-in Date</p>
                   </div>
-                )}
+                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.moveInDate || 'NA'}</p>
+                </div>
 
-                {call.keywords?.intent && (
-                  <div className="bg-secondary-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <TrendingUp className="w-4 h-4 text-indigo-600" />
-                      <p className="text-xs font-medium text-secondary-500 uppercase">Intent Level</p>
-                    </div>
-                    <p className="text-sm font-semibold text-secondary-900">{call.keywords.intent}</p>
+                <div className="bg-secondary-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <TrendingUp className="w-4 h-4 text-indigo-600" />
+                    <p className="text-xs font-medium text-secondary-500 uppercase">Intent Level</p>
                   </div>
-                )}
+                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.intent || 'NA'}</p>
+                </div>
               </div>
 
-              {call.keywords?.amenities && (
-                <div className="mt-4 pt-4 border-t border-secondary-200">
-                  <p className="text-xs font-medium text-secondary-500 uppercase mb-2">Amenities Mentioned</p>
-                  <p className="text-sm text-secondary-900">{call.keywords.amenities}</p>
-                </div>
-              )}
+              <div className="mt-4 pt-4 border-t border-secondary-200">
+                <p className="text-xs font-medium text-secondary-500 uppercase mb-2">Amenities Mentioned</p>
+                <p className="text-sm text-secondary-900">{call.keywords?.amenities || 'NA'}</p>
+              </div>
             </div>
 
             {/* Transcript & Summary */}
@@ -251,11 +245,11 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                   </div>
                 )}
               </div>
-              
+
               <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="bg-secondary-50 p-3 sm:p-4 rounded-lg lg:col-span-2 overflow-x-auto">
                   <pre className="text-xs sm:text-sm text-secondary-700 whitespace-pre-wrap font-sans leading-relaxed">
-                    {call.transcript}
+                    {call.transcript || 'NA'}
                   </pre>
                 </div>
                 <div className="bg-white border border-secondary-200 rounded-lg p-3 sm:p-4 space-y-3">
@@ -265,7 +259,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                   </div>
                   <p className="text-xs text-secondary-500">High-level context for the team</p>
                   <p className="text-sm text-secondary-800 leading-relaxed">
-                    {call.transcriptionSummary || 'Summary will appear after the AI transcript is processed.'}
+                    {call.transcriptionSummary || 'NA'}
                   </p>
                 </div>
               </div>
@@ -280,7 +274,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                 <CheckCircle className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" />
                 Lead Qualification
               </h3>
-              
+
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-secondary-500 mb-1">Type</p>
@@ -288,32 +282,34 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <span className="badge badge-info">Show Project</span>
                   ) : call.leadQualification === 'callback' ? (
                     <span className="badge badge-warning">Arrange Callback</span>
-                  ) : (
+                  ) : call.leadQualification ? (
                     <span className="badge">Not Qualified</span>
+                  ) : (
+                    <span className="text-sm text-secondary-600">NA</span>
                   )}
                 </div>
 
-                {call.sentiment && (
-                  <div>
-                    <p className="text-xs text-secondary-500 mb-1">Sentiment</p>
+                <div>
+                  <p className="text-xs text-secondary-500 mb-1">Sentiment</p>
+                  {call.sentiment ? (
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getSentimentColor(call.sentiment)}`}>
                       {call.sentiment.charAt(0).toUpperCase() + call.sentiment.slice(1)}
                     </span>
-                  </div>
-                )}
+                  ) : (
+                    <span className="text-sm text-secondary-600">NA</span>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Next Action */}
-            {call.nextAction && (
-              <div className="card p-4 sm:p-5">
-                <h3 className="text-sm font-semibold text-secondary-900 mb-3 flex items-center">
-                  <MessageSquare className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" />
-                  Next Action
-                </h3>
-                <p className="text-xs sm:text-sm text-secondary-700 leading-relaxed break-words">{call.nextAction}</p>
-              </div>
-            )}
+            <div className="card p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-secondary-900 mb-3 flex items-center">
+                <MessageSquare className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" />
+                Next Action
+              </h3>
+              <p className="text-xs sm:text-sm text-secondary-700 leading-relaxed break-words">{call.nextAction || 'NA'}</p>
+            </div>
 
             {/* Campaign Info */}
             <div className="card p-4 sm:p-5">
@@ -321,15 +317,15 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               <div className="space-y-2">
                 <div>
                   <p className="text-xs text-secondary-500">Name</p>
-                  <p className="text-sm text-secondary-900 font-medium break-words">{campaign.name}</p>
+                  <p className="text-sm text-secondary-900 font-medium break-words">{campaign?.name || 'NA'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-secondary-500">ID</p>
-                  <p className="text-sm text-secondary-900 break-all">{campaign.id}</p>
+                  <p className="text-sm text-secondary-900 break-all">{campaign?.id || 'NA'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-secondary-500">Type</p>
-                  <p className="text-sm text-secondary-900 capitalize">{type}</p>
+                  <p className="text-sm text-secondary-900 capitalize">{type || 'NA'}</p>
                 </div>
               </div>
             </div>
@@ -340,18 +336,22 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-secondary-500">Call Duration</span>
-                  <span className="text-sm font-medium text-secondary-900">{call.duration}</span>
+                  <span className="text-sm font-medium text-secondary-900">{call.duration || 'NA'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-secondary-500">Campaign Avg</span>
-                  <span className="text-sm font-medium text-secondary-900">{campaign.avgDuration}</span>
+                  <span className="text-sm font-medium text-secondary-900">{campaign?.avgDuration || 'NA'}</span>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-secondary-200">
                   <span className="text-xs text-secondary-500">Performance</span>
-                  {call.duration > campaign.avgDuration ? (
-                    <span className="text-xs font-medium text-green-600">Above Average</span>
+                  {call.duration && campaign?.avgDuration ? (
+                    call.duration > campaign.avgDuration ? (
+                      <span className="text-xs font-medium text-green-600">Above Average</span>
+                    ) : (
+                      <span className="text-xs font-medium text-blue-600">Below Average</span>
+                    )
                   ) : (
-                    <span className="text-xs font-medium text-blue-600">Below Average</span>
+                    <span className="text-xs text-secondary-600">NA</span>
                   )}
                 </div>
               </div>
