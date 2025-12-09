@@ -8,10 +8,14 @@ import {
   Home,
   IndianRupee,
   Phone,
+  PhoneIncoming,
+  PhoneOutgoing,
   XCircle,
   Loader2,
   X,
-  Filter
+  Filter,
+  TrendingUp,
+  Users
 } from 'lucide-react'
 // Note: getCalls, getDateRange, downloadDashboardExport, formatStartDateForAPI, formatEndDateForAPI are not used
 // since there's no API for campaign-specific call logs
@@ -295,6 +299,28 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     return `₹ ${value.toFixed(2)}`
   }
 
+  // Format date helper
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  // Get campaign details from API response
+  const isInbound = campaign?.campaignType === 'inbound' || type === 'incoming'
+  const metrics = campaign?.metrics || {}
+  const settings = campaign?.settings || {}
+  const voiceSettings = settings?.voiceSettings || {}
+  const workingHours = settings?.workingHours || {}
+  const phoneNumbers = campaign?.phoneNumbers || []
+  const callsByStatus = metrics?.callsByStatus || {}
+
+  // Calculate additional metrics
+  const failedCalls = metrics?.failedCalls !== undefined && metrics?.failedCalls !== null ? metrics.failedCalls : null
+  const conversionRate = metrics?.conversionRate !== undefined && metrics?.conversionRate !== null ? metrics.conversionRate : null
+  const costPerCall = metrics?.costPerCall !== undefined && metrics?.costPerCall !== null ? metrics.costPerCall : null
+  const revenue = metrics?.revenue !== undefined && metrics?.revenue !== null ? metrics.revenue : null
+
   return (
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
@@ -318,18 +344,27 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
               >
                 <Home className="w-5 h-5 text-secondary-600" />
               </button>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2 flex-wrap">
-                  <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">{displayValue(campaign?.name)}</h1>
-                  {campaign?.status === 'active' ? (
-                    <span className="badge badge-success flex-shrink-0">Active</span>
-                  ) : campaign?.status ? (
-                    <span className="badge badge-warning flex-shrink-0">Paused</span>
-                  ) : null}
+              <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+                <div className={`p-2 rounded-lg flex-shrink-0 ${isInbound ? 'bg-green-100' : 'bg-blue-100'}`}>
+                  {isInbound ? (
+                    <PhoneIncoming className={`w-4 h-4 sm:w-5 sm:h-5 text-green-600`} />
+                  ) : (
+                    <PhoneOutgoing className={`w-4 h-4 sm:w-5 sm:h-5 text-blue-600`} />
+                  )}
                 </div>
-                <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                  {displayValue(campaign?.id || campaign?._id)} • {displayValue(pagination.totalRecords)} calls
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center space-x-2 flex-wrap">
+                    <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">{displayValue(campaign?.name)}</h1>
+                    {campaign?.status === 'active' ? (
+                      <span className="badge badge-success flex-shrink-0">Active</span>
+                    ) : campaign?.status ? (
+                      <span className="badge badge-warning flex-shrink-0">Paused</span>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-secondary-500 mt-0.5 truncate">
+                    {displayValue(campaign?.id || campaign?._id)} • {displayValue(pagination.totalRecords)} calls
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -341,72 +376,329 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="card p-3 sm:p-4">
-            <p className="text-xs font-medium text-secondary-500 mb-1">Total Calls</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-secondary-500">Total Calls</p>
+              <Phone className="w-4 h-4 text-primary-600" />
+            </div>
             <p className="text-xl sm:text-2xl font-bold text-secondary-900">{displayValue(getTotalCalls())}</p>
           </div>
           <div className="card p-3 sm:p-4">
-            <p className="text-xs font-medium text-secondary-500 mb-1">Successful</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-secondary-500">Successful</p>
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            </div>
             <p className="text-xl sm:text-2xl font-bold text-green-600">{displayValue(getSuccessfulCalls())}</p>
           </div>
           <div className="card p-3 sm:p-4">
-            <p className="text-xs font-medium text-secondary-500 mb-1">Avg Duration</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-secondary-500">Avg Duration</p>
+              <Clock className="w-4 h-4 text-primary-600" />
+            </div>
             <p className="text-xl sm:text-2xl font-bold text-secondary-900">{displayValue(getAvgDuration())}</p>
           </div>
           <div className="card p-3 sm:p-4">
-            <p className="text-xs font-medium text-secondary-500 mb-1">Success Rate</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-secondary-500">Success Rate</p>
+              <TrendingUp className="w-4 h-4 text-primary-600" />
+            </div>
             <p className="text-xl sm:text-2xl font-bold text-blue-600">
               {formattedSuccessRate !== null ? `${formattedSuccessRate}%` : 'NA'}
             </p>
           </div>
         </div>
 
+        {/* Campaign Details Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Left Column - Campaign Information */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Campaign Information Card */}
+            <div className="card p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-secondary-900 mb-4">Campaign Information</h2>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-secondary-500 mb-1">Campaign Name</p>
+                  <p className="text-sm font-medium text-secondary-900">{campaign?.name || 'N/A'}</p>
+                </div>
+                {campaign?.category && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Category</p>
+                    <p className="text-sm font-medium text-secondary-900">{campaign.category}</p>
+                  </div>
+                )}
+                {campaign?.description && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Description</p>
+                    <p className="text-sm text-secondary-700">{campaign.description}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Campaign Type</p>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isInbound
+                      ? 'bg-green-50 text-green-700 border border-green-200'
+                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                      }`}>
+                      {isInbound ? 'Inbound' : 'Outbound'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Status</p>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${campaign?.status === 'active'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-800'
+                      }`}>
+                      {campaign?.status || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                {campaign?.startDate && campaign?.endDate && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-secondary-500 mb-1">Start Date</p>
+                      <p className="text-sm font-medium text-secondary-900">{formatDate(campaign.startDate)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-secondary-500 mb-1">End Date</p>
+                      <p className="text-sm font-medium text-secondary-900">{formatDate(campaign.endDate)}</p>
+                    </div>
+                  </div>
+                )}
+                {campaign?.createdAt && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Created At</p>
+                    <p className="text-sm font-medium text-secondary-900">{formatDate(campaign.createdAt)}</p>
+                  </div>
+                )}
+                {campaign?.createdBy && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Created By</p>
+                    <p className="text-sm font-medium text-secondary-900">{campaign.createdBy}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Phone Numbers (Outbound only) */}
+            {!isInbound && phoneNumbers.length > 0 && (
+              <div className="card p-5 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-secondary-900">Phone Numbers</h2>
+                    <p className="text-xs text-secondary-500 mt-1">Total: {phoneNumbers.length} phone numbers</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {phoneNumbers.slice(0, 5).map((phone, index) => (
+                    <div key={index} className="flex items-center space-x-2 p-2 bg-secondary-50 rounded">
+                      <Phone className="w-4 h-4 text-secondary-500" />
+                      <span className="text-sm text-secondary-700">{phone}</span>
+                    </div>
+                  ))}
+                  {phoneNumbers.length > 5 && (
+                    <p className="text-xs text-secondary-500 text-center pt-2">
+                      +{phoneNumbers.length - 5} more phone numbers
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Settings Card */}
+            <div className="card p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-secondary-900 mb-4">Settings</h2>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-secondary-500 mb-1">Call Timeout</p>
+                  <p className="text-sm font-medium text-secondary-900">{settings?.callTimeout || 'N/A'} seconds</p>
+                </div>
+                {!isInbound && (
+                  <>
+                    {settings?.maxCalls && (
+                      <div>
+                        <p className="text-xs text-secondary-500 mb-1">Max Calls</p>
+                        <p className="text-sm font-medium text-secondary-900">{settings.maxCalls}</p>
+                      </div>
+                    )}
+                    {settings?.retryAttempts !== undefined && (
+                      <div>
+                        <p className="text-xs text-secondary-500 mb-1">Retry Attempts</p>
+                        <p className="text-sm font-medium text-secondary-900">{settings.retryAttempts}</p>
+                      </div>
+                    )}
+                    {workingHours?.start && workingHours?.end && (
+                      <div>
+                        <p className="text-xs text-secondary-500 mb-1">Working Hours</p>
+                        <p className="text-sm font-medium text-secondary-900">
+                          {workingHours.start} - {workingHours.end} ({workingHours.timezone || 'N/A'})
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+                {voiceSettings?.voice && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Voice Settings</p>
+                    <div className="grid grid-cols-3 gap-4 mt-2">
+                      <div>
+                        <p className="text-xs text-secondary-500">Voice</p>
+                        <p className="text-sm font-medium text-secondary-900">{voiceSettings.voice}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-secondary-500">Speed</p>
+                        <p className="text-sm font-medium text-secondary-900">{voiceSettings.speed || 1}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-secondary-500">Language</p>
+                        <p className="text-sm font-medium text-secondary-900">{voiceSettings.language || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Performance Metrics */}
+          <div className="space-y-6">
+            <div className="card p-5 sm:p-6">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-4">Performance Metrics</h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-secondary-500 mb-1">Total Calls</p>
+                  <p className="text-2xl font-bold text-secondary-900">
+                    {metrics?.totalCalls !== undefined && metrics?.totalCalls !== null ? metrics.totalCalls : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-secondary-500 mb-1">Successful Calls</p>
+                  <p className="text-xl font-semibold text-green-600">
+                    {metrics?.successfulCalls !== undefined && metrics?.successfulCalls !== null ? metrics.successfulCalls : 'N/A'}
+                  </p>
+                </div>
+                {failedCalls !== null && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Failed Calls</p>
+                    <p className="text-xl font-semibold text-red-600">{failedCalls}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-secondary-500 mb-1">Success Rate</p>
+                  <p className="text-2xl font-bold text-primary-600">
+                    {formattedSuccessRate !== null ? `${formattedSuccessRate}%` : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-secondary-500 mb-1">Avg Duration</p>
+                  <p className="text-lg font-semibold text-secondary-900">
+                    {displayValue(getAvgDuration())}
+                  </p>
+                </div>
+                {conversionRate !== null && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Conversion Rate</p>
+                    <p className="text-lg font-semibold text-secondary-900">{conversionRate}%</p>
+                  </div>
+                )}
+                {costPerCall !== null && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Cost Per Call</p>
+                    <p className="text-lg font-semibold text-secondary-900">₹ {costPerCall}</p>
+                  </div>
+                )}
+                {revenue !== null && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Revenue</p>
+                    <p className="text-lg font-semibold text-secondary-900">₹ {revenue}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Call Status Breakdown */}
+            {Object.keys(callsByStatus).length > 0 && (
+              <div className="card p-5 sm:p-6">
+                <h3 className="text-lg font-semibold text-secondary-900 mb-4">Call Status</h3>
+                <div className="space-y-3">
+                  {Object.entries(callsByStatus).map(([status, count]) => {
+                    const statusColors = {
+                      ANSWERED: 'text-green-600',
+                      BUSY: 'text-yellow-600',
+                      NO_ANSWER: 'text-orange-600',
+                      FAILED: 'text-red-600'
+                    }
+                    return (
+                      <div key={status} className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                        <span className="text-sm text-secondary-600">{status}</span>
+                        <span className={`text-sm font-semibold ${statusColors[status] || 'text-secondary-900'}`}>
+                          {count !== undefined && count !== null ? count : 'N/A'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Allocated DID Number Card */}
+        {campaign?.allocatedDid && (
+          <div className="card p-4 sm:p-5 mb-4 sm:mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs uppercase tracking-wide text-secondary-500">Allocated DID Number</p>
+                <p className="text-lg sm:text-xl font-semibold text-secondary-900 break-words">{displayValue(campaign.allocatedDid)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Call Logs Section Header */}
         <div className="card p-4 sm:p-5 mb-4 sm:mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <p className="text-xs uppercase tracking-wide text-secondary-500">Allocated DID Number</p>
-              <p className="text-lg sm:text-xl font-semibold text-secondary-900 break-words">{displayValue(campaign?.allocatedDid)}</p>
-            </div>
-            <div className="flex flex-col gap-3">
-              {/* Info Banner - No API for campaign-specific call logs */}
-              <div className="flex items-start gap-2 p-2 bg-secondary-50 rounded-lg border border-secondary-200">
-                <AlertCircle className="w-4 h-4 text-secondary-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-secondary-600">
-                  <span className="font-medium">Note:</span> There is no API available for campaign-specific call logs. The Call Detail Record table shows "NA" for all fields.
-                </p>
-              </div>
-
-              {/* Filters Row - Disabled since there's no API for campaign-specific call logs */}
-              <div className="flex flex-wrap gap-2 items-center opacity-50 pointer-events-none">
-                <div className="flex flex-wrap gap-2">
-                  {filterOptions.map((filter) => (
-                    <button
-                      key={filter.value}
-                      disabled={true}
-                      className="px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border border-secondary-200 text-secondary-600"
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
+              <div className="flex flex-col gap-3">
+                {/* Info Banner - No API for campaign-specific call logs */}
+                <div className="flex items-start gap-2 p-2 bg-secondary-50 rounded-lg border border-secondary-200">
+                  <AlertCircle className="w-4 h-4 text-secondary-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-secondary-600">
+                    <span className="font-medium">Note:</span> There is no API available for campaign-specific call logs. The Call Detail Record table shows "NA" for all fields.
+                  </p>
                 </div>
-                <StatusFilter
-                  options={statusFilterOptions}
-                  selectedValue={statusFilter}
-                  onChange={() => { }}
-                  label="Filter by Status"
-                  disabled={true}
-                  className="flex-shrink-0"
-                />
-              </div>
 
-              {/* Download Button Row - Disabled since there's no API for campaign-specific call logs */}
-              <div className="flex justify-end">
-                <button
-                  disabled={true}
-                  className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto opacity-50 cursor-not-allowed"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download XLSX (Not Available)</span>
-                </button>
+                {/* Filters Row - Disabled since there's no API for campaign-specific call logs */}
+                <div className="flex flex-wrap gap-2 items-center opacity-50 pointer-events-none">
+                  <div className="flex flex-wrap gap-2">
+                    {filterOptions.map((filter) => (
+                      <button
+                        key={filter.value}
+                        disabled={true}
+                        className="px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border border-secondary-200 text-secondary-600"
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                  <StatusFilter
+                    options={statusFilterOptions}
+                    selectedValue={statusFilter}
+                    onChange={() => { }}
+                    label="Filter by Status"
+                    disabled={true}
+                    className="flex-shrink-0"
+                  />
+                </div>
+
+                {/* Download Button Row - Disabled since there's no API for campaign-specific call logs */}
+                <div className="flex justify-end">
+                  <button
+                    disabled={true}
+                    className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto opacity-50 cursor-not-allowed"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download XLSX (Not Available)</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -414,7 +706,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
         {/* Error Message */}
         {error && (
-          <div className="card p-4 bg-red-50 border border-red-200">
+          <div className="card p-4 bg-red-50 border border-red-200 mb-4 sm:mb-6">
             <div className="flex items-start space-x-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
@@ -435,7 +727,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
         {/* Loading State */}
         {loading && (
-          <div className="card p-8">
+          <div className="card p-8 mb-4 sm:mb-6">
             <div className="flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
               <p className="ml-3 text-secondary-600">Loading call logs...</p>
@@ -445,7 +737,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
         {/* Call Logs - Desktop Table View */}
         {!loading && (
-          <div className="card hidden md:block">
+          <div className="card hidden md:block mb-4 sm:mb-6">
             <div className="px-4 sm:px-6 py-4 border-b border-secondary-200">
               <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
               <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p>
@@ -530,7 +822,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
         {/* Call Logs - Mobile Card View */}
         {!loading && (
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-3 mb-4 sm:mb-6">
             <div className="mb-3">
               <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
               <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p>
