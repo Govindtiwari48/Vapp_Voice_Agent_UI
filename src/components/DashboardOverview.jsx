@@ -1,26 +1,25 @@
-import { useState, useEffect, useRef } from 'react'
-import { ArrowLeft, CalendarRange, Download, Home, Target, TrendingUp, Loader2, AlertCircle, Phone, Clock, PlayCircle } from 'lucide-react'
-import { getDashboardOverview, getDashboardMetrics, downloadDashboardExport, getCalls, getAnalyticsSummary } from '../api'
+import { useState, useEffect } from 'react'
+import { ArrowLeft, CalendarRange, Download, Home, TrendingUp, TrendingDown, Loader2, AlertCircle, Phone, Clock, PlayCircle, Target } from 'lucide-react'
+import { getDashboardOverview, getDashboardMetrics, getCalls } from '../api'
 import StatusFilter from './StatusFilter'
 
 // Status filter options based on backend API
 const statusFilterOptions = [
   { label: 'Answered', value: 'ANSWERED' },
   { label: 'Busy', value: 'BUSY' },
-  { label: 'No Answer', value: 'NO ANSWER' },
+  { label: 'No Answer', value: 'NO_ANSWER' },
   { label: 'Failed', value: 'FAILED' },
   { label: 'Cancelled', value: 'CANCELLED' }
 ]
 
 const DashboardOverview = ({ onBack, onHome }) => {
   const [range, setRange] = useState('total')
-  const [statusFilter, setStatusFilter] = useState('') // Empty string means "All"
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [overviewData, setOverviewData] = useState(null)
   const [metricsData, setMetricsData] = useState(null)
   const [callsData, setCallsData] = useState(null)
-  const [analyticsData, setAnalyticsData] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('')
   const [exporting, setExporting] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [customDates, setCustomDates] = useState({
@@ -33,79 +32,22 @@ const DashboardOverview = ({ onBack, onHome }) => {
     totalRecords: 0,
     limit: 20
   })
-  const isRangeChanging = useRef(false)
 
   const rangeLabels = ['total', 'weekly', 'monthly', 'custom']
 
-  // Helper functions for call data
-  const formatDuration = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const fetchCallsData = async () => {
-    try {
-      const params = {
-        page: callsPagination.currentPage,
-        limit: callsPagination.limit
-      }
-
-      // Add status filter if selected
-      if (statusFilter) {
-        params.status = statusFilter
-      }
-
-      const calls = await getCalls(params)
-
-      if (calls) {
-        const totalRecords = calls.totalRecords || 0
-        const limit = calls.limit || 20
-        let totalPages = calls.totalPages || 1
-        if (totalRecords > 0 && limit > 0) {
-          const calculatedPages = Math.ceil(totalRecords / limit)
-          if (!calls.totalPages || calculatedPages > totalPages) {
-            totalPages = calculatedPages
-          }
-        }
-
-        setCallsData(calls)
-        setCallsPagination(prev => ({
-          currentPage: calls.currentPage || prev.currentPage,
-          totalPages: totalPages,
-          totalRecords: totalRecords,
-          limit: limit
-        }))
-      }
-    } catch (err) {
-      console.warn('Failed to fetch calls data:', err.message)
-    }
-  }
-
-  // Fetch dashboard data when range or status filter changes
+  // Fetch dashboard data when range changes
   useEffect(() => {
-    isRangeChanging.current = true
-    setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
-    fetchDashboardData()
-  }, [range, statusFilter])
-
-  // Fetch calls when pagination changes (but not when range is changing)
-  useEffect(() => {
-    // Skip if we're changing range (calls will be fetched in fetchDashboardData)
-    if (isRangeChanging.current) {
-      isRangeChanging.current = false
-      return
+    if (range !== 'custom' || (customDates.startDate && customDates.endDate)) {
+      fetchDashboardData()
     }
-    // Only fetch if we're not in the initial loading state and page is valid
-    if (!loading && callsPagination.currentPage > 0) {
+  }, [range])
+
+  // Fetch calls data separately when pagination or status filter changes
+  useEffect(() => {
+    if (!loading) {
       fetchCallsData()
     }
-  }, [callsPagination.currentPage])
+  }, [callsPagination.currentPage, statusFilter])
 
   const fetchDashboardData = async () => {
     setLoading(true)
@@ -120,8 +62,8 @@ const DashboardOverview = ({ onBack, onHome }) => {
         params.endDate = customDates.endDate
       }
 
-      // Fetch overview, metrics, calls, and analytics data
-      const [overview, metrics, calls, analytics] = await Promise.all([
+      // Fetch overview, metrics, and calls data in parallel
+      const [overviewResponse, metricsResponse, callsResponse] = await Promise.all([
         getDashboardOverview(params).catch((err) => {
           console.warn('Failed to fetch overview data:', err.message)
           return null
@@ -131,46 +73,32 @@ const DashboardOverview = ({ onBack, onHome }) => {
           return null
         }),
         getCalls({
-          page: callsPagination.currentPage,
+          page: 1,
           limit: callsPagination.limit,
           ...(statusFilter ? { status: statusFilter } : {})
         }).catch((err) => {
           console.warn('Failed to fetch calls data:', err.message)
           return null
-        }),
-        getAnalyticsSummary().catch((err) => {
-          console.warn('Failed to fetch analytics data:', err.message)
-          return null
         })
       ])
 
-      setOverviewData(overview)
-      setMetricsData(metrics)
-
-      // Update calls data and pagination
-      if (calls) {
-        const totalRecords = calls.totalRecords || 0
-        const limit = calls.limit || 20
-        let totalPages = calls.totalPages || 1
-        if (totalRecords > 0 && limit > 0) {
-          const calculatedPages = Math.ceil(totalRecords / limit)
-          if (!calls.totalPages || calculatedPages > totalPages) {
-            totalPages = calculatedPages
-          }
-        }
-
-        setCallsData(calls)
-        setCallsPagination({
-          currentPage: calls.currentPage || 1,
-          totalPages: totalPages,
-          totalRecords: totalRecords,
-          limit: limit
-        })
-      } else {
-        setCallsData(null)
+      if (overviewResponse?.success && overviewResponse?.data) {
+        setOverviewData(overviewResponse.data)
       }
 
-      setAnalyticsData(analytics)
+      if (metricsResponse?.success && metricsResponse?.data) {
+        setMetricsData(metricsResponse.data)
+      }
+
+      if (callsResponse) {
+        setCallsData(callsResponse)
+        setCallsPagination({
+          currentPage: callsResponse.currentPage || 1,
+          totalPages: callsResponse.totalPages || 1,
+          totalRecords: callsResponse.totalRecords || 0,
+          limit: callsResponse.limit || 20
+        })
+      }
     } catch (err) {
       setError(err.message || 'Failed to load dashboard data')
       console.error('Dashboard error:', err)
@@ -179,37 +107,113 @@ const DashboardOverview = ({ onBack, onHome }) => {
     }
   }
 
-  const handleExport = async () => {
-    setExporting(true)
+  const fetchCallsData = async () => {
     try {
-      const exportParams = { range }
-
-      if (range === 'custom' && customDates.startDate && customDates.endDate) {
-        exportParams.startDate = customDates.startDate
-        exportParams.endDate = customDates.endDate
+      const params = {
+        page: callsPagination.currentPage,
+        limit: callsPagination.limit
       }
 
-      const filename = `dashboard-${range}-${new Date().toISOString().split('T')[0]}.xlsx`
-      await downloadDashboardExport(exportParams, filename)
+      if (statusFilter) {
+        params.status = statusFilter
+      }
+
+      const callsResponse = await getCalls(params)
+
+      if (callsResponse) {
+        setCallsData(callsResponse)
+        setCallsPagination(prev => ({
+          ...prev,
+          currentPage: callsResponse.currentPage || prev.currentPage,
+          totalPages: callsResponse.totalPages || 1,
+          totalRecords: callsResponse.totalRecords || 0,
+          limit: callsResponse.limit || 20
+        }))
+      }
+    } catch (err) {
+      console.warn('Failed to fetch calls data:', err.message)
+    }
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    setError('')
+    try {
+      const exportBody = { range }
+
+      if (range === 'custom' && customDates.startDate && customDates.endDate) {
+        exportBody.startDate = customDates.startDate
+        exportBody.endDate = customDates.endDate
+      }
+
+      // Use fetch directly to download the file
+      const token = localStorage.getItem('authToken')
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'
+
+      const response = await fetch(`${API_BASE_URL}/api/dashboard/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(exportBody)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Export failed')
+      }
+
+      // Create blob and download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `dashboard-export-${range}-${new Date().toISOString().split('T')[0]}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
     } catch (err) {
       setError(err.message || 'Failed to export data')
+      console.error('Export error:', err)
     } finally {
       setExporting(false)
     }
   }
 
   const handleRangeChange = (newRange) => {
-    setRange(newRange)
     if (newRange === 'custom') {
       setShowDatePicker(true)
+      setRange(newRange)
+    } else {
+      // Clear custom dates when switching to preset ranges
+      setCustomDates({ startDate: '', endDate: '' })
+      setShowDatePicker(false)
+      setError('')
+      setRange(newRange)
+      // Reset to page 1 when changing range
+      setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
     }
   }
 
   const handleCustomDateSubmit = () => {
     if (customDates.startDate && customDates.endDate) {
+      // Validate date range
+      const start = new Date(customDates.startDate)
+      const end = new Date(customDates.endDate)
+
+      if (start > end) {
+        setError('Start date must be before end date')
+        return
+      }
+
       setShowDatePicker(false)
+      setError('')
       setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
       fetchDashboardData()
+    } else {
+      setError('Please select both start and end dates')
     }
   }
 
@@ -217,48 +221,65 @@ const DashboardOverview = ({ onBack, onHome }) => {
     setCallsPagination(prev => ({ ...prev, currentPage: newPage }))
   }
 
-  // Helper function to format call duration from seconds to mm:ss
-  const formatAvgCallTime = (seconds) => {
-    if (!seconds) return '0:00'
+  // Helper functions
+  const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Format metrics for display - prioritize analytics data
-  const getFormattedMetrics = () => {
-    const dataSource = analyticsData || overviewData
-    if (!dataSource) return []
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
 
+  // Get metrics from API response
+  const getMetrics = () => {
+    if (!overviewData?.metrics) return []
+
+    const metrics = overviewData.metrics
     return [
       {
-        label: 'Total Calls',
-        value: dataSource.totalCalls?.toLocaleString() || '0'
+        label: 'Inbound Calls',
+        value: metrics.inboundCalls?.value || '0',
+        change: metrics.inboundCalls?.change || '',
+        trend: metrics.inboundCalls?.trend || 'neutral'
       },
       {
-        label: 'Total Minutes',
-        value: dataSource.totalMinutes?.toLocaleString() || '0'
+        label: 'Inbound Minutes',
+        value: metrics.inboundMinutes?.value || '0',
+        change: metrics.inboundMinutes?.change || '',
+        trend: metrics.inboundMinutes?.trend || 'neutral'
       },
       {
         label: 'Avg Call Time',
-        value: analyticsData ? formatAvgCallTime(analyticsData.avgCallTime) : (dataSource.avgCallDuration || '0:00')
+        value: metrics.avgCallTime?.value || '0:00',
+        change: metrics.avgCallTime?.change || '',
+        trend: metrics.avgCallTime?.trend || 'neutral'
       },
       {
         label: 'Total Spend',
-        value: dataSource.totalSpend ? `₹ ${parseFloat(dataSource.totalSpend).toLocaleString()}` : '₹ 0'
+        value: metrics.totalSpend?.value || '₹ 0',
+        change: metrics.totalSpend?.change || '',
+        trend: metrics.totalSpend?.trend || 'neutral'
       },
       {
-        label: 'Successful Calls',
-        value: dataSource.successfulCalls?.toLocaleString() || '0'
+        label: 'Positive Dispositions',
+        value: metrics.positiveDispositions?.value || '0',
+        change: metrics.positiveDispositions?.change || '',
+        trend: metrics.positiveDispositions?.trend || 'neutral',
+        percentage: metrics.positiveDispositions?.percentage
       },
       {
-        label: 'Success Rate',
-        value: dataSource.successRate ? `${dataSource.successRate}%` : '0%'
+        label: 'Avg Cost Per Disposition',
+        value: metrics.avgCostPerDisposition?.value || '₹ 0',
+        change: metrics.avgCostPerDisposition?.change || '',
+        trend: metrics.avgCostPerDisposition?.trend || 'neutral'
       }
     ]
   }
 
-  const metrics = getFormattedMetrics()
+  const metrics = getMetrics()
 
   return (
     <div className="min-h-screen bg-secondary-50">
@@ -287,11 +308,25 @@ const DashboardOverview = ({ onBack, onHome }) => {
             </div>
             <div className="flex items-center space-x-2 flex-shrink-0">
               <button
-                onClick={() => setShowDatePicker(!showDatePicker)}
-                className="btn-secondary inline-flex items-center space-x-2 text-sm p-2 sm:px-4"
+                onClick={() => {
+                  if (range !== 'custom') {
+                    setRange('custom')
+                    setShowDatePicker(true)
+                  } else {
+                    setShowDatePicker(!showDatePicker)
+                  }
+                }}
+                className={`inline-flex items-center space-x-2 text-sm p-2 sm:px-4 rounded-lg transition-colors ${range === 'custom' && customDates.startDate && customDates.endDate
+                  ? 'bg-primary-50 text-primary-700 border border-primary-200'
+                  : 'btn-secondary'
+                  }`}
               >
                 <CalendarRange className="w-4 h-4" />
-                <span className="hidden sm:inline">Date Filter</span>
+                <span className="hidden sm:inline">
+                  {range === 'custom' && customDates.startDate && customDates.endDate
+                    ? `${new Date(customDates.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(customDates.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                    : 'Date Filter'}
+                </span>
               </button>
               <button
                 onClick={handleExport}
@@ -332,58 +367,83 @@ const DashboardOverview = ({ onBack, onHome }) => {
 
         {/* Custom Date Picker */}
         {showDatePicker && range === 'custom' && (
-          <div className="card p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-secondary-900 mb-4">Select Custom Date Range</h3>
+          <div className="card p-4 sm:p-6 border-2 border-primary-200 bg-primary-50/30">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-secondary-900">Select Custom Date Range</h3>
+                <p className="text-xs text-secondary-500 mt-1">Choose a date range to view metrics for that period</p>
+              </div>
+              <CalendarRange className="w-5 h-5 text-primary-600" />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-2">Start Date</label>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">
+                  Start Date <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   value={customDates.startDate}
-                  onChange={(e) => setCustomDates({ ...customDates, startDate: e.target.value })}
-                  className="input"
+                  onChange={(e) => {
+                    setCustomDates({ ...customDates, startDate: e.target.value })
+                    setError('')
+                  }}
+                  max={customDates.endDate || new Date().toISOString().split('T')[0]}
+                  className="input w-full"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-2">End Date</label>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">
+                  End Date <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   value={customDates.endDate}
-                  onChange={(e) => setCustomDates({ ...customDates, endDate: e.target.value })}
-                  className="input"
+                  onChange={(e) => {
+                    setCustomDates({ ...customDates, endDate: e.target.value })
+                    setError('')
+                  }}
+                  min={customDates.startDate}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="input w-full"
                 />
               </div>
             </div>
             <div className="flex items-center space-x-3 mt-4">
               <button
                 onClick={handleCustomDateSubmit}
-                disabled={!customDates.startDate || !customDates.endDate}
+                disabled={!customDates.startDate || !customDates.endDate || loading}
                 className="btn-primary disabled:opacity-50"
               >
                 Apply Date Range
               </button>
               <button
-                onClick={() => setShowDatePicker(false)}
+                onClick={() => {
+                  setShowDatePicker(false)
+                  setError('')
+                }}
                 className="btn-secondary"
+                disabled={loading}
               >
                 Cancel
               </button>
             </div>
+            {customDates.startDate && customDates.endDate && (
+              <p className="text-xs text-secondary-500 mt-2">
+                Selected range: {new Date(customDates.startDate).toLocaleDateString()} to {new Date(customDates.endDate).toLocaleDateString()}
+              </p>
+            )}
           </div>
         )}
 
         <div className="card p-4 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div>
               <p className="text-xs uppercase text-secondary-500 tracking-wide">Time Range</p>
-              <h2 className="text-lg font-semibold text-secondary-900">Choose a preset view</h2>
-              {analyticsData?.dateRange && (
-                <div className="mt-1 flex items-center space-x-2">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Analytics Data
-                  </span>
+              <h2 className="text-lg font-semibold text-secondary-900">Select Time Period</h2>
+              {overviewData?.dateRange && (
+                <div className="mt-2">
                   <p className="text-xs text-secondary-500">
-                    Data from {new Date(analyticsData.dateRange.start).toLocaleDateString()} to {new Date(analyticsData.dateRange.end).toLocaleDateString()}
+                    Data from <span className="font-medium text-secondary-700">{new Date(overviewData.dateRange.start).toLocaleDateString()}</span> to <span className="font-medium text-secondary-700">{new Date(overviewData.dateRange.end).toLocaleDateString()}</span>
                   </p>
                 </div>
               )}
@@ -394,9 +454,9 @@ const DashboardOverview = ({ onBack, onHome }) => {
                   key={label}
                   onClick={() => handleRangeChange(label)}
                   disabled={loading}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide disabled:opacity-50 ${range === label
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold uppercase tracking-wide disabled:opacity-50 transition-colors ${range === label
                     ? 'bg-primary-600 text-white shadow-sm'
-                    : 'bg-secondary-100 text-secondary-600 hover:text-secondary-900'
+                    : 'bg-secondary-100 text-secondary-600 hover:bg-secondary-200 hover:text-secondary-900'
                     }`}
                 >
                   {label}
@@ -412,234 +472,334 @@ const DashboardOverview = ({ onBack, onHome }) => {
               <p className="ml-3 text-secondary-600">Loading dashboard data...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {metrics.map((metric) => (
                 <div
                   key={metric.label}
-                  className="border border-secondary-200 rounded-xl px-3 sm:px-4 py-4 sm:py-5 bg-white flex items-center justify-between hover:border-primary-200 transition-colors"
+                  className="border border-secondary-200 rounded-xl px-4 py-5 bg-white hover:border-primary-300 hover:shadow-sm transition-all"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm text-secondary-500 break-words">{metric.label}</p>
-                    <p className="text-xl sm:text-2xl font-semibold text-secondary-900 mt-1">
-                      {metric.value}
-                    </p>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-secondary-500 font-medium mb-1">{metric.label}</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-secondary-900">
+                        {metric.value}
+                      </p>
+                    </div>
+                    <div className={`p-2.5 rounded-lg flex-shrink-0 ml-2 ${metric.trend === 'up'
+                      ? 'bg-green-50'
+                      : metric.trend === 'down'
+                        ? 'bg-red-50'
+                        : 'bg-secondary-50'
+                      }`}>
+                      {metric.trend === 'up' ? (
+                        <TrendingUp className={`w-5 h-5 ${metric.trend === 'up' ? 'text-green-600' : 'text-secondary-600'}`} />
+                      ) : metric.trend === 'down' ? (
+                        <TrendingDown className="w-5 h-5 text-red-600" />
+                      ) : (
+                        <TrendingUp className="w-5 h-5 text-secondary-400" />
+                      )}
+                    </div>
                   </div>
-                  <div className="bg-secondary-50 p-2 sm:p-3 rounded-lg flex-shrink-0 ml-2">
-                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
-                  </div>
+                  {metric.change && (
+                    <div className="flex items-center space-x-1 mt-3 pt-3 border-t border-secondary-100">
+                      <span className={`text-xs font-semibold ${metric.trend === 'up'
+                        ? 'text-green-600'
+                        : metric.trend === 'down'
+                          ? 'text-red-600'
+                          : 'text-secondary-600'
+                        }`}>
+                        {metric.change}
+                      </span>
+                      {metric.percentage !== undefined && (
+                        <span className="text-xs text-secondary-500">
+                          ({metric.percentage}% positive)
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
+        {/* Dashboard Metrics Section */}
         {!loading && metricsData && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="card p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase text-secondary-500 tracking-wide">Performance Snapshot</p>
-                  <h3 className="text-lg font-semibold text-secondary-900">Call Status Distribution</h3>
-                </div>
-                <Target className="w-5 h-5 text-primary-600" />
-              </div>
-              <div className="space-y-3">
-                {metricsData.callStatusBreakdown?.map((row) => (
-                  <div key={row.status} className="flex items-center justify-between border-b border-secondary-100 pb-2">
-                    <div>
-                      <p className="text-sm text-secondary-600">{row.status}</p>
-                      <p className="text-xs text-secondary-400">{row.count} calls</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-secondary-900">{row.percentage}%</p>
-                    </div>
+          <div className="card p-4 sm:p-6">
+            <div className="mb-6">
+              <p className="text-xs uppercase text-secondary-500 tracking-wide">Detailed Analytics</p>
+              <h2 className="text-lg font-semibold text-secondary-900">Dashboard Metrics</h2>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Call Statistics */}
+              <div className="border border-secondary-200 rounded-xl p-5 bg-white">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-xs uppercase text-secondary-500 tracking-wide">Call Statistics</p>
+                    <h3 className="text-lg font-semibold text-secondary-900">Call Breakdown</h3>
                   </div>
-                )) || (
-                    <p className="text-sm text-secondary-500 text-center py-4">No data available</p>
-                  )}
+                  <Target className="w-5 h-5 text-primary-600" />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Total Calls</p>
+                      <p className="text-xs text-secondary-400">All calls</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">{metricsData.calls?.total || 0}</p>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Inbound</p>
+                      <p className="text-xs text-secondary-400">Inbound calls</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">{metricsData.calls?.inbound || 0}</p>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Outbound</p>
+                      <p className="text-xs text-secondary-400">Outbound calls</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">{metricsData.calls?.outbound || 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Call Status Distribution */}
+              <div className="border border-secondary-200 rounded-xl p-5 bg-white">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-xs uppercase text-secondary-500 tracking-wide">Performance</p>
+                    <h3 className="text-lg font-semibold text-secondary-900">Call Status</h3>
+                  </div>
+                  <Target className="w-5 h-5 text-primary-600" />
+                </div>
+                <div className="space-y-3">
+                  {metricsData.calls?.byStatus && Object.entries(metricsData.calls.byStatus).map(([status, count]) => {
+                    const total = metricsData.calls.total || 1
+                    const percentage = Math.round((count / total) * 100)
+                    const statusLabels = {
+                      completed: 'Completed',
+                      noAnswer: 'No Answer',
+                      busy: 'Busy',
+                      failed: 'Failed'
+                    }
+                    const statusColors = {
+                      completed: 'text-green-600',
+                      noAnswer: 'text-orange-600',
+                      busy: 'text-yellow-600',
+                      failed: 'text-red-600'
+                    }
+                    return (
+                      <div key={status} className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                        <div>
+                          <p className="text-sm text-secondary-600">{statusLabels[status] || status}</p>
+                          <p className="text-xs text-secondary-400">{count} calls</p>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-lg font-semibold ${statusColors[status] || 'text-secondary-900'}`}>{percentage}%</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Duration Statistics */}
+              <div className="border border-secondary-200 rounded-xl p-5 bg-white">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-xs uppercase text-secondary-500 tracking-wide">Duration</p>
+                    <h3 className="text-lg font-semibold text-secondary-900">Call Duration</h3>
+                  </div>
+                  <Clock className="w-5 h-5 text-primary-600" />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Total Minutes</p>
+                      <p className="text-xs text-secondary-400">All calls</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">{metricsData.duration?.totalMinutes || 0}</p>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Avg Duration</p>
+                      <p className="text-xs text-secondary-400">Per call</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">{formatDuration(metricsData.duration?.avgSeconds || 0)}</p>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Inbound Minutes</p>
+                      <p className="text-xs text-secondary-400">Inbound calls</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">{metricsData.duration?.byCallType?.inbound || 0}</p>
+                  </div>
+                  <div className="flex items-center justify-between pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Outbound Minutes</p>
+                      <p className="text-xs text-secondary-400">Outbound calls</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">{metricsData.duration?.byCallType?.outbound || 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cost Breakdown */}
+              <div className="border border-secondary-200 rounded-xl p-5 bg-white">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-xs uppercase text-secondary-500 tracking-wide">Spend</p>
+                    <h3 className="text-lg font-semibold text-secondary-900">Cost Breakdown</h3>
+                  </div>
+                  <TrendingUp className="w-5 h-5 text-primary-600" />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Total Cost</p>
+                      <p className="text-xs text-secondary-400">All costs</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">₹ {metricsData.costs?.total || 0}</p>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Inbound</p>
+                      <p className="text-xs text-secondary-400">Inbound calls</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">₹ {metricsData.costs?.inbound || 0}</p>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Outbound</p>
+                      <p className="text-xs text-secondary-400">Outbound calls</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">₹ {metricsData.costs?.outbound || 0}</p>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">AI Training</p>
+                      <p className="text-xs text-secondary-400">Training costs</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">₹ {metricsData.costs?.aiTraining || 0}</p>
+                  </div>
+                  <div className="flex items-center justify-between pb-2">
+                    <div>
+                      <p className="text-sm text-secondary-600">Infrastructure</p>
+                      <p className="text-xs text-secondary-400">Infrastructure costs</p>
+                    </div>
+                    <p className="text-lg font-semibold text-secondary-900">₹ {metricsData.costs?.infrastructure || 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Calls Section */}
+        {!loading && (
+          <div className="card p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase text-secondary-500 tracking-wide">Latest Activity</p>
+                <h3 className="text-lg font-semibold text-secondary-900">Recent Calls</h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <StatusFilter
+                  options={statusFilterOptions}
+                  selectedValue={statusFilter}
+                  onChange={(value) => {
+                    setStatusFilter(value)
+                    setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
+                  }}
+                  label="Filter by Status"
+                  disabled={loading}
+                  className="flex-shrink-0"
+                />
+                <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
               </div>
             </div>
 
-            <div className="card p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase text-secondary-500 tracking-wide">Spend Monitoring</p>
-                  <h3 className="text-lg font-semibold text-secondary-900">Cost Breakdown</h3>
-                </div>
-                <TrendingUp className="w-5 h-5 text-primary-600" />
-              </div>
-              <div className="space-y-3">
-                {metricsData.costBreakdown?.map((row) => (
-                  <div key={row.category} className="flex items-center justify-between border-b border-secondary-100 pb-2">
-                    <div>
-                      <p className="text-sm text-secondary-600">{row.category}</p>
-                      <p className="text-xs text-secondary-400">Share of total</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-secondary-900">
-                        ₹ {row.amount?.toLocaleString() || '0'}
-                      </p>
-                      <p className="text-xs text-primary-600 font-semibold">{row.percentage}%</p>
-                    </div>
-                  </div>
-                )) || (
-                    <p className="text-sm text-secondary-500 text-center py-4">No data available</p>
-                  )}
-              </div>
-            </div>
-
-            {/* Recent Calls Section */}
-            <div className="card p-5 space-y-4 lg:col-span-2">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase text-secondary-500 tracking-wide">Latest Activity</p>
-                  <h3 className="text-lg font-semibold text-secondary-900">Recent Calls</h3>
-                </div>
-                <div className="flex items-center gap-3">
-                  <StatusFilter
-                    options={statusFilterOptions}
-                    selectedValue={statusFilter}
-                    onChange={(value) => {
-                      setStatusFilter(value)
-                      setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
-                    }}
-                    label="Filter by Status"
-                    disabled={loading}
-                    className="flex-shrink-0"
-                  />
-                  <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
-                </div>
-              </div>
-
-              {callsData?.calls?.length > 0 ? (
-                <>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {callsData.calls.map((call) => (
-                      <div key={call._id} className="flex items-center justify-between border-b border-secondary-100 pb-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.status === 'ANSWERED'
+            {callsData?.calls?.length > 0 ? (
+              <>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {callsData.calls.map((call) => (
+                    <div key={call._id} className="flex items-center justify-between border-b border-secondary-100 pb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.status === 'ANSWERED'
                               ? 'bg-green-100 text-green-800'
                               : call.status === 'BUSY'
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : call.status === 'NO_ANSWER'
                                   ? 'bg-orange-100 text-orange-800'
                                   : 'bg-red-100 text-red-800'
-                              }`}>
-                              {call.status}
-                            </span>
-                            <span className="text-sm font-medium text-secondary-900">{call.cnum}</span>
-                          </div>
-                          <p className="text-xs text-secondary-500">
-                            {formatDate(call.start)} • VMN: {call.vmn}
-                          </p>
+                            }`}>
+                            {call.status}
+                          </span>
+                          <span className="text-sm font-medium text-secondary-900">{call.cnum}</span>
                         </div>
-                        <div className="flex items-center space-x-3 flex-shrink-0">
-                          <div className="text-right">
-                            <div className="flex items-center space-x-1 text-xs text-secondary-600">
-                              <Clock className="w-3 h-3" />
-                              <span>{formatDuration(call.duration)}</span>
-                            </div>
-                            <p className="text-xs text-secondary-500">Duration</p>
-                          </div>
-                          {call.recordingUrl && (
-                            <button
-                              onClick={() => window.open(call.recordingUrl, '_blank')}
-                              className="p-1 hover:bg-primary-50 rounded-lg transition-colors"
-                              title="Play Recording"
-                            >
-                              <PlayCircle className="w-4 h-4 text-primary-600" />
-                            </button>
-                          )}
-                        </div>
+                        <p className="text-xs text-secondary-500">
+                          {formatDate(call.start)} • VMN: {call.vmn}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Pagination Controls */}
-                  {(callsPagination.totalPages > 1 || callsPagination.totalRecords > callsPagination.limit) && (
-                    <div className="pt-4 mt-4 border-t border-secondary-200 bg-primary-50 rounded-lg p-4">
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="text-sm sm:text-base font-medium text-secondary-700">
-                          Showing <span className="font-bold text-primary-700">{((callsPagination.currentPage - 1) * callsPagination.limit) + 1}</span> to <span className="font-bold text-primary-700">{Math.min(callsPagination.currentPage * callsPagination.limit, callsPagination.totalRecords)}</span> of <span className="font-bold text-primary-700">{callsPagination.totalRecords}</span> total calls
-                          {callsPagination.totalPages > 1 && (
-                            <span className="text-secondary-600 ml-2">(Page {callsPagination.currentPage} of {callsPagination.totalPages})</span>
-                          )}
+                      <div className="flex items-center space-x-3 flex-shrink-0">
+                        <div className="text-right">
+                          <div className="flex items-center space-x-1 text-xs text-secondary-600">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatDuration(call.duration)}</span>
+                          </div>
+                          <p className="text-xs text-secondary-500">Duration</p>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        {call.recordingUrl && (
                           <button
-                            onClick={() => handleCallsPageChange(1)}
-                            disabled={callsPagination.currentPage === 1}
-                            className="px-3 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            title="First page"
+                            onClick={() => window.open(call.recordingUrl, '_blank')}
+                            className="p-1 hover:bg-primary-50 rounded-lg transition-colors"
+                            title="Play Recording"
                           >
-                            First
+                            <PlayCircle className="w-4 h-4 text-primary-600" />
                           </button>
-                          <button
-                            onClick={() => handleCallsPageChange(callsPagination.currentPage - 1)}
-                            disabled={callsPagination.currentPage === 1}
-                            className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            title="Previous page"
-                          >
-                            Previous
-                          </button>
-
-                          {/* Page Number Buttons */}
-                          {callsPagination.totalPages > 1 && (
-                            <div className="flex items-center space-x-1">
-                              {Array.from({ length: Math.min(5, callsPagination.totalPages) }, (_, i) => {
-                                let pageNum;
-                                if (callsPagination.totalPages <= 5) {
-                                  pageNum = i + 1;
-                                } else if (callsPagination.currentPage <= 3) {
-                                  pageNum = i + 1;
-                                } else if (callsPagination.currentPage >= callsPagination.totalPages - 2) {
-                                  pageNum = callsPagination.totalPages - 4 + i;
-                                } else {
-                                  pageNum = callsPagination.currentPage - 2 + i;
-                                }
-
-                                return (
-                                  <button
-                                    key={pageNum}
-                                    onClick={() => handleCallsPageChange(pageNum)}
-                                    className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${callsPagination.currentPage === pageNum
-                                      ? 'bg-primary-600 text-white border-primary-600'
-                                      : 'bg-white text-secondary-700 border-secondary-300 hover:bg-secondary-50'
-                                      }`}
-                                  >
-                                    {pageNum}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          <button
-                            onClick={() => handleCallsPageChange(callsPagination.currentPage + 1)}
-                            disabled={callsPagination.currentPage >= callsPagination.totalPages}
-                            className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            title="Next page"
-                          >
-                            Next
-                          </button>
-                          <button
-                            onClick={() => handleCallsPageChange(callsPagination.totalPages)}
-                            disabled={callsPagination.currentPage >= callsPagination.totalPages}
-                            className="px-3 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            title="Last page"
-                          >
-                            Last
-                          </button>
-                        </div>
+                        )}
                       </div>
                     </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-secondary-500 text-center py-8">No calls available</p>
-              )}
-            </div>
+                  ))}
+                </div>
+
+                {/* Pagination Controls */}
+                {callsPagination.totalPages > 1 && (
+                  <div className="pt-4 mt-4 border-t border-secondary-200">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="text-sm font-medium text-secondary-700">
+                        Showing <span className="font-bold text-primary-700">{((callsPagination.currentPage - 1) * callsPagination.limit) + 1}</span> to <span className="font-bold text-primary-700">{Math.min(callsPagination.currentPage * callsPagination.limit, callsPagination.totalRecords)}</span> of <span className="font-bold text-primary-700">{callsPagination.totalRecords}</span> calls
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleCallsPageChange(callsPagination.currentPage - 1)}
+                          disabled={callsPagination.currentPage === 1}
+                          className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Previous
+                        </button>
+                        <span className="text-sm text-secondary-600">
+                          Page {callsPagination.currentPage} of {callsPagination.totalPages}
+                        </span>
+                        <button
+                          onClick={() => handleCallsPageChange(callsPagination.currentPage + 1)}
+                          disabled={callsPagination.currentPage >= callsPagination.totalPages}
+                          className="px-4 py-2 text-sm font-medium rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-secondary-500 text-center py-8">No calls available</p>
+            )}
           </div>
         )}
       </div>
