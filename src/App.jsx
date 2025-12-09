@@ -39,6 +39,7 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showSessionWarning, setShowSessionWarning] = useState(false)
   const [warningRemainingTime, setWarningRemainingTime] = useState(0)
+  const [dashboardResetKey, setDashboardResetKey] = useState(0)
 
   // Check authentication on mount and set up session management
   useEffect(() => {
@@ -175,7 +176,10 @@ function App() {
     } else if (view === 'campaignDetails') {
       setView('dashboardOverview')
       setSelectedCampaignDetails(null)
-    } else if (['dashboardOverview', 'projectTraining', 'apiDocs', 'wallet'].includes(view)) {
+    } else if (view === 'dashboardOverview') {
+      // Reset all filters by incrementing the reset key
+      setDashboardResetKey(prev => prev + 1)
+    } else if (['projectTraining', 'apiDocs', 'wallet'].includes(view)) {
       setView('dashboardOverview')
     }
   }
@@ -434,6 +438,7 @@ function App() {
 
         {view === 'dashboardOverview' && (
           <DashboardOverview
+            key={dashboardResetKey}
             onBack={handleBack}
             onHome={handleHome}
             onCampaignClick={handleCampaignClick}
