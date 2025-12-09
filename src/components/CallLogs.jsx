@@ -13,7 +13,8 @@ import {
   X,
   Filter
 } from 'lucide-react'
-import { getCalls, getDateRange, downloadDashboardExport, formatStartDateForAPI, formatEndDateForAPI } from '../api'
+// Note: getCalls, getDateRange, downloadDashboardExport, formatStartDateForAPI, formatEndDateForAPI are not used
+// since there's no API for campaign-specific call logs
 import StatusFilter from './StatusFilter'
 
 const filterOptions = [
@@ -53,67 +54,26 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     endDate: ''
   })
 
-  // Fetch calls when component mounts or filter changes
+  // Note: There is no API for campaign-specific call logs
+  // So we show "NA" in the Call Detail Record table
   useEffect(() => {
-    fetchCalls()
-  }, [activeFilter, statusFilter, pagination.currentPage])
+    // Since there's no API for campaign-specific call logs, we don't fetch calls
+    // Instead, we show empty state with NA values
+    setLoading(false)
+    setCalls([])
+    setPagination({
+      currentPage: 1,
+      totalPages: 1,
+      totalRecords: 0,
+      limit: 20
+    })
+  }, [])
 
   const fetchCalls = async () => {
-    setLoading(true)
-    setError('')
-
-    try {
-      const params = {
-        page: pagination.currentPage,
-        limit: pagination.limit
-      }
-
-      // Add date range based on active filter
-      if (activeFilter !== 'custom') {
-        const dateRange = getDateRange(activeFilter)
-        if (dateRange.startDate && dateRange.endDate) {
-          params.startDate = dateRange.startDate
-          params.endDate = dateRange.endDate
-        }
-      } else if (customDates.startDate && customDates.endDate) {
-        // Format custom dates with proper time boundaries
-        // Start date: 00:00:00.000Z, End date: 23:59:59.999Z
-        params.startDate = formatStartDateForAPI(customDates.startDate)
-        params.endDate = formatEndDateForAPI(customDates.endDate)
-      }
-
-      // Add status filter if selected
-      if (statusFilter) {
-        params.status = statusFilter
-      }
-
-      const response = await getCalls(params)
-
-      const totalRecords = response.totalRecords || 0
-      const limit = response.limit || 20
-      // Calculate totalPages if not provided or if it seems incorrect
-      let totalPages = response.totalPages || 1
-      if (totalRecords > 0 && limit > 0) {
-        const calculatedPages = Math.ceil(totalRecords / limit)
-        // Use the calculated value if API didn't provide it or if it seems wrong
-        if (!response.totalPages || calculatedPages > totalPages) {
-          totalPages = calculatedPages
-        }
-      }
-
-      setCalls(response.calls || [])
-      setPagination({
-        currentPage: response.currentPage || 1,
-        totalPages: totalPages,
-        totalRecords: totalRecords,
-        limit: limit
-      })
-    } catch (err) {
-      setError(err.message || 'Failed to load call logs')
-      console.error('Call logs error:', err)
-    } finally {
-      setLoading(false)
-    }
+    // This function is kept for compatibility but not used
+    // since there's no API for campaign-specific call logs
+    setLoading(false)
+    setCalls([])
   }
 
   const handleFilterChange = (filter) => {
@@ -162,22 +122,8 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   }
 
   const handleDownload = async () => {
-    setDownloading(true)
-    try {
-      const params = { range: activeFilter }
-
-      if (activeFilter === 'custom' && customDates.startDate && customDates.endDate) {
-        params.startDate = customDates.startDate
-        params.endDate = customDates.endDate
-      }
-
-      const filename = `call-logs-${activeFilter}-${new Date().toISOString().split('T')[0]}.xlsx`
-      await downloadDashboardExport(params, filename)
-    } catch (err) {
-      setError(err.message || 'Failed to download report')
-    } finally {
-      setDownloading(false)
-    }
+    // Disabled since there's no API for campaign-specific call logs
+    setError('Download is not available - no API for campaign-specific call logs')
   }
 
   const handlePageChange = (newPage) => {
@@ -228,8 +174,8 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     }
   }
 
-  // Use calls from API only, transform them for display
-  const displayCalls = calls.map(transformCallData)
+  // Note: displayCalls is not used since there's no API for campaign-specific call logs
+  // const displayCalls = calls.map(transformCallData)
 
   // Normalize status to handle both API format (ANSWERED) and legacy format (completed)
   const normalizeStatus = (status) => {
@@ -292,9 +238,57 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     }
   }
 
-  const formattedSuccessRate = campaign.totalCalls
-    ? Math.round((campaign.successfulCalls / campaign.totalCalls) * 100)
-    : 0
+  // Helper function to format duration from seconds to MM:SS
+  const formatDuration = (seconds) => {
+    if (seconds === null || seconds === undefined) return null
+    if (seconds === 0 || seconds === '0') return '0:00'
+    // If already formatted (string with :), return as is
+    if (typeof seconds === 'string' && seconds.includes(':')) return seconds
+    // Convert seconds to MM:SS
+    const numSeconds = typeof seconds === 'number' ? seconds : parseInt(seconds, 10)
+    if (isNaN(numSeconds)) return null
+    const mins = Math.floor(numSeconds / 60)
+    const secs = numSeconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Helper functions to get campaign metrics from either structure
+  // Campaign-by-id API returns: campaign.metrics.totalCalls
+  // Transformed data from list: campaign.totalCalls
+  const getTotalCalls = () => {
+    const value = campaign?.totalCalls ?? campaign?.metrics?.totalCalls
+    return value !== null && value !== undefined ? value : null
+  }
+
+  const getSuccessfulCalls = () => {
+    const value = campaign?.successfulCalls ?? campaign?.metrics?.successfulCalls
+    return value !== null && value !== undefined ? value : null
+  }
+
+  const getAvgDuration = () => {
+    // Check if already formatted (from transformed list data)
+    const directValue = campaign?.avgDuration
+    if (directValue !== null && directValue !== undefined) {
+      return directValue
+    }
+    // Otherwise, format from metrics (from campaign-by-id API)
+    const secondsValue = campaign?.metrics?.avgDuration
+    return formatDuration(secondsValue)
+  }
+
+  // Helper function to display value or NA (but show 0 if value is 0)
+  const displayValue = (value) => {
+    if (value === 0 || value === '0') return '0'
+    if (value === null || value === undefined || value === '') return 'NA'
+    return value
+  }
+
+  // Calculate success rate
+  const totalCalls = getTotalCalls()
+  const successfulCalls = getSuccessfulCalls()
+  const formattedSuccessRate = totalCalls !== null && totalCalls !== undefined
+    ? (totalCalls === 0 ? 0 : (successfulCalls !== null && successfulCalls !== undefined ? Math.round((successfulCalls / totalCalls) * 100) : null))
+    : null
 
   const formatCurrency = (value) => {
     if (typeof value !== 'number') return '—'
@@ -326,15 +320,15 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
               </button>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 flex-wrap">
-                  <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">{campaign.name}</h1>
-                  {campaign.status === 'active' ? (
+                  <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">{displayValue(campaign?.name)}</h1>
+                  {campaign?.status === 'active' ? (
                     <span className="badge badge-success flex-shrink-0">Active</span>
-                  ) : (
+                  ) : campaign?.status ? (
                     <span className="badge badge-warning flex-shrink-0">Paused</span>
-                  )}
+                  ) : null}
                 </div>
                 <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                  {campaign.id} • {pagination.totalRecords || calls.length} calls
+                  {displayValue(campaign?.id || campaign?._id)} • {displayValue(pagination.totalRecords)} calls
                 </p>
               </div>
             </div>
@@ -348,20 +342,20 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Total Calls</p>
-            <p className="text-xl sm:text-2xl font-bold text-secondary-900">{campaign.totalCalls}</p>
+            <p className="text-xl sm:text-2xl font-bold text-secondary-900">{displayValue(getTotalCalls())}</p>
           </div>
           <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Successful</p>
-            <p className="text-xl sm:text-2xl font-bold text-green-600">{campaign.successfulCalls}</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-600">{displayValue(getSuccessfulCalls())}</p>
           </div>
           <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Avg Duration</p>
-            <p className="text-xl sm:text-2xl font-bold text-secondary-900">{campaign.avgDuration}</p>
+            <p className="text-xl sm:text-2xl font-bold text-secondary-900">{displayValue(getAvgDuration())}</p>
           </div>
           <div className="card p-3 sm:p-4">
             <p className="text-xs font-medium text-secondary-500 mb-1">Success Rate</p>
             <p className="text-xl sm:text-2xl font-bold text-blue-600">
-              {formattedSuccessRate}%
+              {formattedSuccessRate !== null ? `${formattedSuccessRate}%` : 'NA'}
             </p>
           </div>
         </div>
@@ -370,62 +364,25 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex-1 min-w-0">
               <p className="text-xs uppercase tracking-wide text-secondary-500">Allocated DID Number</p>
-              <p className="text-lg sm:text-xl font-semibold text-secondary-900 break-words">{campaign.allocatedDid || 'Not assigned'}</p>
+              <p className="text-lg sm:text-xl font-semibold text-secondary-900 break-words">{displayValue(campaign?.allocatedDid)}</p>
             </div>
             <div className="flex flex-col gap-3">
-              {/* Active Filters Summary */}
-              {hasActiveFilters && (
-                <div className="flex flex-wrap items-center gap-2 p-2 bg-primary-50 rounded-lg border border-primary-200">
-                  <Filter className="w-4 h-4 text-primary-600 flex-shrink-0" />
-                  <span className="text-xs font-medium text-primary-700">Active Filters:</span>
-                  {activeFilter !== 'today' && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800 border border-primary-300">
-                      Date: {getActiveFilterLabel()}
-                      {activeFilter === 'custom' && customDates.startDate && customDates.endDate && (
-                        <span className="ml-1 text-primary-600">
-                          ({new Date(customDates.startDate).toLocaleDateString()} - {new Date(customDates.endDate).toLocaleDateString()})
-                        </span>
-                      )}
-                    </span>
-                  )}
-                  {statusFilter && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800 border border-primary-300">
-                      Status: {getActiveStatusLabel()}
-                    </span>
-                  )}
-                  <button
-                    onClick={handleClearFilters}
-                    className="ml-auto inline-flex items-center space-x-1 px-2 py-1 text-xs font-medium text-primary-700 hover:text-primary-900 hover:bg-primary-100 rounded transition-colors"
-                    title="Clear all filters"
-                  >
-                    <X className="w-3 h-3" />
-                    <span>Clear All</span>
-                  </button>
-                </div>
-              )}
+              {/* Info Banner - No API for campaign-specific call logs */}
+              <div className="flex items-start gap-2 p-2 bg-secondary-50 rounded-lg border border-secondary-200">
+                <AlertCircle className="w-4 h-4 text-secondary-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-secondary-600">
+                  <span className="font-medium">Note:</span> There is no API available for campaign-specific call logs. The Call Detail Record table shows "NA" for all fields.
+                </p>
+              </div>
 
-              {/* Info Banner - Show when no filters are active */}
-              {!hasActiveFilters && (
-                <div className="flex items-start gap-2 p-2 bg-secondary-50 rounded-lg border border-secondary-200">
-                  <AlertCircle className="w-4 h-4 text-secondary-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-secondary-600">
-                    <span className="font-medium">Tip:</span> Combine date and status filters to refine your search. Select a date range and status to see filtered results.
-                  </p>
-                </div>
-              )}
-
-              {/* Filters Row */}
-              <div className="flex flex-wrap gap-2 items-center">
+              {/* Filters Row - Disabled since there's no API for campaign-specific call logs */}
+              <div className="flex flex-wrap gap-2 items-center opacity-50 pointer-events-none">
                 <div className="flex flex-wrap gap-2">
                   {filterOptions.map((filter) => (
                     <button
                       key={filter.value}
-                      onClick={() => handleFilterChange(filter.value)}
-                      disabled={loading}
-                      className={`px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border touch-manipulation disabled:opacity-50 transition-all ${activeFilter === filter.value
-                        ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
-                        : 'border-secondary-200 text-secondary-600 hover:text-secondary-900 hover:border-secondary-300 active:bg-secondary-50'
-                        }`}
+                      disabled={true}
+                      className="px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border border-secondary-200 text-secondary-600"
                     >
                       {filter.label}
                     </button>
@@ -434,26 +391,21 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                 <StatusFilter
                   options={statusFilterOptions}
                   selectedValue={statusFilter}
-                  onChange={handleStatusFilterChange}
+                  onChange={() => { }}
                   label="Filter by Status"
-                  disabled={loading}
+                  disabled={true}
                   className="flex-shrink-0"
                 />
               </div>
 
-              {/* Download Button Row */}
+              {/* Download Button Row - Disabled since there's no API for campaign-specific call logs */}
               <div className="flex justify-end">
                 <button
-                  onClick={handleDownload}
-                  disabled={downloading || loading}
-                  className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto disabled:opacity-50"
+                  disabled={true}
+                  className="btn-secondary inline-flex items-center justify-center space-x-2 text-sm w-full sm:w-auto opacity-50 cursor-not-allowed"
                 >
-                  {downloading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  <span>{downloading ? 'Downloading...' : 'Download XLSX'}</span>
+                  <Download className="w-4 h-4" />
+                  <span>Download XLSX (Not Available)</span>
                 </button>
               </div>
             </div>
@@ -479,47 +431,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           </div>
         )}
 
-        {/* Custom Date Picker */}
-        {showCustomDatePicker && activeFilter === 'custom' && (
-          <div className="card p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-secondary-900 mb-4">Select Custom Date Range</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-2">Start Date</label>
-                <input
-                  type="date"
-                  value={customDates.startDate}
-                  onChange={(e) => setCustomDates({ ...customDates, startDate: e.target.value })}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-2">End Date</label>
-                <input
-                  type="date"
-                  value={customDates.endDate}
-                  onChange={(e) => setCustomDates({ ...customDates, endDate: e.target.value })}
-                  className="input"
-                />
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 mt-4">
-              <button
-                onClick={handleCustomDateSubmit}
-                disabled={!customDates.startDate || !customDates.endDate}
-                className="btn-primary disabled:opacity-50"
-              >
-                Apply Date Range
-              </button>
-              <button
-                onClick={() => setShowCustomDatePicker(false)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Custom Date Picker - Hidden since there's no API for campaign-specific call logs */}
 
         {/* Loading State */}
         {loading && (
@@ -570,55 +482,46 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-secondary-200">
-                  {displayCalls.map((call) => (
-                    <tr
-                      key={call.id}
-                      onClick={() => onSelectCall(call)}
-                      className="hover:bg-secondary-50 cursor-pointer transition-colors"
-                    >
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">{getStatusBadge(call.status)}</td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          {getStatusIcon(call.status)}
-                          <span className="text-sm font-medium text-secondary-900">{call.id}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <Phone className="w-4 h-4 text-secondary-400" />
-                          <span className="text-sm text-secondary-900">{call.phoneNumber}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-900">{call.date}</div>
-                        <div className="text-xs text-secondary-500">{call.time}</div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-1.5">
-                          <Clock className="w-4 h-4 text-secondary-400" />
-                          <span className="text-sm text-secondary-900">{call.duration}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <IndianRupee className="w-4 h-4 text-secondary-400" />
-                          <span className="text-sm font-medium text-secondary-900">{formatCurrency(call.spendInr)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        {call.dispositionType ? (
-                          <span className={`badge ${call.dispositionType === 'Successful' ? 'badge-success' : 'badge-warning'}`}>
-                            {call.dispositionType}
-                          </span>
-                        ) : (
-                          getStatusBadge(call.status)
-                        )}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-primary-600 font-semibold">
-                        {call.recommendedAction || '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {/* Since there's no API for campaign-specific call logs, show NA row */}
+                  <tr className="cursor-default">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-secondary-600">NA</span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <Phone className="w-4 h-4 text-secondary-400" />
+                        <span className="text-sm font-medium text-secondary-600">NA</span>
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <Phone className="w-4 h-4 text-secondary-400" />
+                        <span className="text-sm text-secondary-600">NA</span>
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-secondary-600">NA</div>
+                      <div className="text-xs text-secondary-500">NA</div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-1.5">
+                        <Clock className="w-4 h-4 text-secondary-400" />
+                        <span className="text-sm text-secondary-600">NA</span>
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <IndianRupee className="w-4 h-4 text-secondary-400" />
+                        <span className="text-sm font-medium text-secondary-600">NA</span>
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-secondary-600">NA</span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-secondary-600">
+                      NA
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -630,72 +533,45 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           <div className="md:hidden space-y-3">
             <div className="mb-3">
               <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
-              <p className="text-xs text-secondary-500 mt-0.5">Tap on any call to view details</p>
+              <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p>
             </div>
-            {displayCalls.map((call) => (
-              <div
-                key={call.id}
-                onClick={() => onSelectCall(call)}
-                className="card p-4 cursor-pointer active:bg-secondary-50 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-2 flex-1 min-w-0">
-                    {getStatusIcon(call.status)}
-                    <span className="text-sm font-medium text-secondary-900 truncate">{call.id}</span>
-                  </div>
-                  {getStatusBadge(call.status)}
+            {/* Since there's no API for campaign-specific call logs, show NA card */}
+            <div className="card p-4 cursor-default">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                  <Phone className="w-4 h-4 text-secondary-400" />
+                  <span className="text-sm font-medium text-secondary-600 truncate">NA</span>
                 </div>
-
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-center space-x-2">
-                    <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                    <span className="text-sm text-secondary-900">{call.phoneNumber}</span>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                    <div>
-                      <div className="text-xs text-secondary-900">{call.date}</div>
-                      <div className="text-xs text-secondary-500">{call.time} • {call.duration}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <IndianRupee className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                    <span className="text-xs text-secondary-900">{formatCurrency(call.spendInr)}</span>
-                  </div>
-
-                </div>
-
-                {getQualificationBadge(call.leadQualification) && (
-                  <div className="pt-2 border-t border-secondary-100">
-                    {getQualificationBadge(call.leadQualification)}
-                  </div>
-                )}
-
-                {call.recommendedAction && (
-                  <div className="mt-3 pt-3 border-t border-secondary-100 text-xs font-semibold text-primary-600">
-                    Action: {call.recommendedAction}
-                  </div>
-                )}
+                <span className="text-sm text-secondary-600">NA</span>
               </div>
-            ))}
-          </div>
-        )}
 
-        {/* Empty State */}
-        {!loading && !error && displayCalls.length === 0 && (
-          <div className="card p-8 text-center">
-            <div className="text-secondary-400 mb-4">
-              <Phone className="w-12 h-12 mx-auto" />
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                  <span className="text-sm text-secondary-600">NA</span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                  <div>
+                    <div className="text-xs text-secondary-600">NA</div>
+                    <div className="text-xs text-secondary-500">NA • NA</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <IndianRupee className="w-4 h-4 text-secondary-400 flex-shrink-0" />
+                  <span className="text-xs text-secondary-600">NA</span>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-medium text-secondary-900 mb-2">No calls found</h3>
-            <p className="text-secondary-500">No calls match your current filter criteria. Try adjusting your date range or filters.</p>
           </div>
         )}
 
-        {/* Pagination Controls */}
-        {!loading && (pagination.totalPages > 1 || pagination.totalRecords > pagination.limit) && (
+        {/* Note: Empty state removed since we're showing NA in the table instead */}
+
+        {/* Pagination Controls - Hidden since there's no API for campaign-specific call logs */}
+        {false && !loading && (pagination.totalPages > 1 || pagination.totalRecords > pagination.limit) && (
           <div className="card p-4 sm:p-6 mt-6 border-2 border-primary-200 bg-primary-50">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm sm:text-base font-medium text-secondary-700">

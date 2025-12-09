@@ -19,6 +19,13 @@ import {
 } from 'lucide-react'
 
 const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
+  // Helper function to display value or NA (but show 0 if value is 0)
+  const displayValue = (value) => {
+    if (value === 0 || value === '0') return '0'
+    if (value === null || value === undefined || value === '') return 'NA'
+    return value
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed':
@@ -71,7 +78,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">Call Details</h1>
                 <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                  {campaign?.name || 'NA'} • {call?.id || 'NA'}
+                  {displayValue(campaign?.name)} • {displayValue(call?.id || call?._id)}
                 </p>
               </div>
             </div>
@@ -97,7 +104,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <p className="text-xs text-secondary-500 mb-1">Phone Number</p>
                     <div className="flex items-center space-x-2">
                       <Phone className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                      <p className="text-sm font-medium text-secondary-900 break-all">{call.phoneNumber || 'NA'}</p>
+                      <p className="text-sm font-medium text-secondary-900 break-all">{displayValue(call?.phoneNumber || call?.cnum)}</p>
                     </div>
                   </div>
 
@@ -106,7 +113,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4 text-secondary-400 flex-shrink-0" />
                       <p className="text-sm text-secondary-900 break-words">
-                        {call.date && call.time ? `${call.date} at ${call.time}` : (call.date || call.time || 'NA')}
+                        {call?.date && call?.time ? `${call.date} at ${call.time}` : (displayValue(call?.date || call?.time || call?.start))}
                       </p>
                     </div>
                   </div>
@@ -117,7 +124,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <p className="text-xs text-secondary-500 mb-1">Duration</p>
                     <div className="flex items-center space-x-2">
                       <Clock className="w-4 h-4 text-secondary-400 flex-shrink-0" />
-                      <p className="text-sm font-medium text-secondary-900">{call.duration || 'NA'}</p>
+                      <p className="text-sm font-medium text-secondary-900">{displayValue(call?.duration)}</p>
                     </div>
                   </div>
 
@@ -137,7 +144,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
 
               <div className="mt-4 pt-4 border-t border-secondary-200">
                 <p className="text-xs text-secondary-500 mb-2">Voice Recording</p>
-                {call.recordingUrl ? (
+                {call?.recordingUrl ? (
                   <div className="flex items-center space-x-3 bg-secondary-50 p-3 rounded-lg">
                     <button className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors">
                       <Play className="w-4 h-4 text-white" />
@@ -147,7 +154,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                         <div className="h-full bg-primary-600 w-0" style={{ width: '0%' }}></div>
                       </div>
                     </div>
-                    <span className="text-xs text-secondary-500">{call.duration}</span>
+                    <span className="text-xs text-secondary-500">{displayValue(call?.duration)}</span>
                   </div>
                 ) : (
                   <p className="text-sm text-secondary-600">NA</p>
@@ -168,7 +175,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <DollarSign className="w-4 h-4 text-green-600" />
                     <p className="text-xs font-medium text-secondary-500 uppercase">Budget</p>
                   </div>
-                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.budget || 'NA'}</p>
+                  <p className="text-sm font-semibold text-secondary-900">{displayValue(call?.keywords?.budget)}</p>
                 </div>
 
                 <div className="bg-secondary-50 p-4 rounded-lg">
@@ -176,7 +183,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <MapPin className="w-4 h-4 text-red-600" />
                     <p className="text-xs font-medium text-secondary-500 uppercase">Location</p>
                   </div>
-                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.location || 'NA'}</p>
+                  <p className="text-sm font-semibold text-secondary-900">{displayValue(call?.keywords?.location)}</p>
                 </div>
 
                 <div className="bg-secondary-50 p-4 rounded-lg">
@@ -184,7 +191,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <Bed className="w-4 h-4 text-blue-600" />
                     <p className="text-xs font-medium text-secondary-500 uppercase">Bedrooms</p>
                   </div>
-                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.bedrooms || 'NA'}</p>
+                  <p className="text-sm font-semibold text-secondary-900">{displayValue(call?.keywords?.bedrooms)}</p>
                 </div>
 
                 <div className="bg-secondary-50 p-4 rounded-lg">
@@ -192,7 +199,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <HomeIcon className="w-4 h-4 text-purple-600" />
                     <p className="text-xs font-medium text-secondary-500 uppercase">Property Type</p>
                   </div>
-                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.propertyType || 'NA'}</p>
+                  <p className="text-sm font-semibold text-secondary-900">{displayValue(call?.keywords?.propertyType)}</p>
                 </div>
 
                 <div className="bg-secondary-50 p-4 rounded-lg">
@@ -200,7 +207,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <Calendar className="w-4 h-4 text-orange-600" />
                     <p className="text-xs font-medium text-secondary-500 uppercase">Move-in Date</p>
                   </div>
-                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.moveInDate || 'NA'}</p>
+                  <p className="text-sm font-semibold text-secondary-900">{displayValue(call?.keywords?.moveInDate)}</p>
                 </div>
 
                 <div className="bg-secondary-50 p-4 rounded-lg">
@@ -208,13 +215,13 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                     <TrendingUp className="w-4 h-4 text-indigo-600" />
                     <p className="text-xs font-medium text-secondary-500 uppercase">Intent Level</p>
                   </div>
-                  <p className="text-sm font-semibold text-secondary-900">{call.keywords?.intent || 'NA'}</p>
+                  <p className="text-sm font-semibold text-secondary-900">{displayValue(call?.keywords?.intent)}</p>
                 </div>
               </div>
 
               <div className="mt-4 pt-4 border-t border-secondary-200">
                 <p className="text-xs font-medium text-secondary-500 uppercase mb-2">Amenities Mentioned</p>
-                <p className="text-sm text-secondary-900">{call.keywords?.amenities || 'NA'}</p>
+                <p className="text-sm text-secondary-900">{displayValue(call?.keywords?.amenities)}</p>
               </div>
             </div>
 
@@ -225,9 +232,9 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                   <FileText className="w-5 h-5 mr-2 text-primary-600 flex-shrink-0" />
                   Call Transcript
                 </h2>
-                {call.transcript && (
+                {call?.transcript ? (
                   <div className="flex flex-wrap gap-2">
-                    {call.transcriptPdfUrl ? (
+                    {call?.transcriptPdfUrl ? (
                       <a
                         href={call.transcriptPdfUrl}
                         target="_blank"
@@ -243,13 +250,19 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                       </button>
                     )}
                   </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="btn-secondary text-sm opacity-50 cursor-not-allowed">
+                      Download Transcript (PDF) - NA
+                    </button>
+                  </div>
                 )}
               </div>
 
               <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="bg-secondary-50 p-3 sm:p-4 rounded-lg lg:col-span-2 overflow-x-auto">
                   <pre className="text-xs sm:text-sm text-secondary-700 whitespace-pre-wrap font-sans leading-relaxed">
-                    {call.transcript || 'NA'}
+                    {displayValue(call?.transcript)}
                   </pre>
                 </div>
                 <div className="bg-white border border-secondary-200 rounded-lg p-3 sm:p-4 space-y-3">
@@ -259,7 +272,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                   </div>
                   <p className="text-xs text-secondary-500">High-level context for the team</p>
                   <p className="text-sm text-secondary-800 leading-relaxed">
-                    {call.transcriptionSummary || 'NA'}
+                    {displayValue(call?.transcriptionSummary)}
                   </p>
                 </div>
               </div>
@@ -308,7 +321,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                 <MessageSquare className="w-4 h-4 mr-2 text-primary-600 flex-shrink-0" />
                 Next Action
               </h3>
-              <p className="text-xs sm:text-sm text-secondary-700 leading-relaxed break-words">{call.nextAction || 'NA'}</p>
+              <p className="text-xs sm:text-sm text-secondary-700 leading-relaxed break-words">{displayValue(call?.nextAction || call?.recommendedAction)}</p>
             </div>
 
             {/* Campaign Info */}
@@ -317,15 +330,15 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               <div className="space-y-2">
                 <div>
                   <p className="text-xs text-secondary-500">Name</p>
-                  <p className="text-sm text-secondary-900 font-medium break-words">{campaign?.name || 'NA'}</p>
+                  <p className="text-sm text-secondary-900 font-medium break-words">{displayValue(campaign?.name)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-secondary-500">ID</p>
-                  <p className="text-sm text-secondary-900 break-all">{campaign?.id || 'NA'}</p>
+                  <p className="text-sm text-secondary-900 break-all">{displayValue(campaign?.id || campaign?._id)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-secondary-500">Type</p>
-                  <p className="text-sm text-secondary-900 capitalize">{type || 'NA'}</p>
+                  <p className="text-sm text-secondary-900 capitalize">{displayValue(type)}</p>
                 </div>
               </div>
             </div>
@@ -336,15 +349,15 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-secondary-500">Call Duration</span>
-                  <span className="text-sm font-medium text-secondary-900">{call.duration || 'NA'}</span>
+                  <span className="text-sm font-medium text-secondary-900">{displayValue(call?.duration)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-secondary-500">Campaign Avg</span>
-                  <span className="text-sm font-medium text-secondary-900">{campaign?.avgDuration || 'NA'}</span>
+                  <span className="text-sm font-medium text-secondary-900">{displayValue(campaign?.avgDuration)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-secondary-200">
                   <span className="text-xs text-secondary-500">Performance</span>
-                  {call.duration && campaign?.avgDuration ? (
+                  {call?.duration && campaign?.avgDuration && call.duration !== 'NA' && campaign.avgDuration !== 'NA' ? (
                     call.duration > campaign.avgDuration ? (
                       <span className="text-xs font-medium text-green-600">Above Average</span>
                     ) : (

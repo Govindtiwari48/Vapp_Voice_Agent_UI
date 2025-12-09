@@ -40,6 +40,8 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
     totalRecords: 0,
     limit: 20
   })
+  const [campaignStatusFilter, setCampaignStatusFilter] = useState('') // Campaign status filter
+  const [campaignTypeFilter, setCampaignTypeFilter] = useState('') // Campaign type filter
 
   const rangeLabels = ['total', 'weekly', 'monthly', 'custom']
 
@@ -57,10 +59,10 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
     }
   }, [callsPagination.currentPage, statusFilter])
 
-  // Fetch campaigns data on mount and when pagination changes
+  // Fetch campaigns data on mount and when pagination or filters change
   useEffect(() => {
     fetchCampaignsData()
-  }, [campaignsPagination.currentPage])
+  }, [campaignsPagination.currentPage, campaignStatusFilter, campaignTypeFilter])
 
   const fetchDashboardData = async () => {
     setLoading(true)
@@ -240,6 +242,16 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
       const params = {
         page: campaignsPagination.currentPage,
         limit: campaignsPagination.limit
+      }
+
+      // Add status filter if selected
+      if (campaignStatusFilter) {
+        params.status = campaignStatusFilter
+      }
+
+      // Add type filter if selected
+      if (campaignTypeFilter) {
+        params.type = campaignTypeFilter
       }
 
       const response = await getCampaigns(params)
@@ -858,11 +870,45 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
         {!loading && (
           <div className="card p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
+              <div className="flex-1">
                 <p className="text-xs uppercase text-secondary-500 tracking-wide">Campaign Management</p>
                 <h3 className="text-lg font-semibold text-secondary-900">All Campaigns</h3>
               </div>
-              <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Campaign Type Filter */}
+                <select
+                  value={campaignTypeFilter}
+                  onChange={(e) => {
+                    setCampaignTypeFilter(e.target.value)
+                    setCampaignsPagination(prev => ({ ...prev, currentPage: 1 }))
+                  }}
+                  className="input text-sm py-2 px-3 pr-8"
+                  disabled={campaignsLoading}
+                >
+                  <option value="">All Types</option>
+                  <option value="inbound">Inbound</option>
+                  <option value="outbound">Outbound</option>
+                </select>
+
+                {/* Campaign Status Filter */}
+                <select
+                  value={campaignStatusFilter}
+                  onChange={(e) => {
+                    setCampaignStatusFilter(e.target.value)
+                    setCampaignsPagination(prev => ({ ...prev, currentPage: 1 }))
+                  }}
+                  className="input text-sm py-2 px-3 pr-8"
+                  disabled={campaignsLoading}
+                >
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="paused">Paused</option>
+                  <option value="completed">Completed</option>
+                  <option value="draft">Draft</option>
+                </select>
+
+                <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
+              </div>
             </div>
 
             {campaignsLoading ? (
@@ -899,14 +945,14 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
                               <div className="flex items-center space-x-2 mb-1">
                                 <h4 className="text-sm font-semibold text-secondary-900 truncate">{campaign.name}</h4>
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${campaign.status === 'active'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-gray-100 text-gray-800'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
                                   }`}>
                                   {campaign.status}
                                 </span>
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isInbound
-                                    ? 'bg-green-50 text-green-700 border border-green-200'
-                                    : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  ? 'bg-green-50 text-green-700 border border-green-200'
+                                  : 'bg-blue-50 text-blue-700 border border-blue-200'
                                   }`}>
                                   {isInbound ? 'Inbound' : 'Outbound'}
                                 </span>

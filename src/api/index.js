@@ -575,6 +575,78 @@ export const getCampaignById = async (campaignId) => {
     }
 };
 
+/**
+ * Update campaign (basic info, status, settings, or phone numbers)
+ * @param {string} campaignId - Campaign ID
+ * @param {Object} updateData - Data to update
+ * @param {string} updateData.name - Campaign name
+ * @param {string} updateData.description - Campaign description
+ * @param {string} updateData.status - Campaign status (active, paused, completed, draft)
+ * @param {Object} updateData.settings - Campaign settings
+ * @param {Array} updateData.phoneNumbers - Phone numbers (outbound only)
+ * @returns {Promise<Object>} Updated campaign data
+ */
+export const updateCampaign = async (campaignId, updateData) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaignId}`, {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify(updateData)
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Update campaign status (pause/resume/complete)
+ * @param {string} campaignId - Campaign ID
+ * @param {string} status - New status (active, paused, completed, draft)
+ * @returns {Promise<Object>} Updated campaign data
+ */
+export const updateCampaignStatus = async (campaignId, status) => {
+    return updateCampaign(campaignId, { status });
+};
+
+/**
+ * Update campaign basic info (name, description)
+ * @param {string} campaignId - Campaign ID
+ * @param {Object} basicInfo - Basic info to update
+ * @param {string} basicInfo.name - Campaign name
+ * @param {string} basicInfo.description - Campaign description
+ * @param {string} basicInfo.status - Campaign status (optional)
+ * @returns {Promise<Object>} Updated campaign data
+ */
+export const updateCampaignBasicInfo = async (campaignId, basicInfo) => {
+    return updateCampaign(campaignId, basicInfo);
+};
+
+/**
+ * Update campaign settings
+ * @param {string} campaignId - Campaign ID
+ * @param {Object} settings - Settings to update
+ * @param {number} settings.maxCalls - Maximum calls
+ * @param {number} settings.callTimeout - Call timeout in seconds
+ * @param {number} settings.retryAttempts - Retry attempts
+ * @param {Object} settings.workingHours - Working hours configuration
+ * @returns {Promise<Object>} Updated campaign data
+ */
+export const updateCampaignSettings = async (campaignId, settings) => {
+    return updateCampaign(campaignId, { settings });
+};
+
+/**
+ * Update campaign phone numbers (outbound only)
+ * @param {string} campaignId - Campaign ID
+ * @param {Array<string>} phoneNumbers - Array of phone numbers
+ * @returns {Promise<Object>} Updated campaign data
+ */
+export const updateCampaignPhoneNumbers = async (campaignId, phoneNumbers) => {
+    return updateCampaign(campaignId, { phoneNumbers });
+};
+
 // Export API base URL for direct use if needed
 export { API_BASE_URL };
 
