@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Home, Save, X, PhoneIncoming, PhoneOutgoing, Info, Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Home, Save, X, PhoneIncoming, PhoneOutgoing, Info, Upload, FileText, CheckCircle, AlertCircle, Download } from 'lucide-react'
 import { createCampaign } from '../api'
 
 const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
@@ -223,6 +223,31 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     if (fileInput) {
       fileInput.value = ''
     }
+  }
+
+  const handleDownloadSampleCsv = () => {
+    // Create sample CSV content
+    const sampleData = [
+      '+919876543210',
+      '+919876543211', 
+      '+919876543212',
+      '+919876543213',
+      '+919876543214'
+    ]
+    
+    const csvContent = sampleData.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    
+    // Create download link
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'sample_phone_numbers.csv')
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const validateForm = () => {
@@ -537,7 +562,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                   </label>
 
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 flex-wrap gap-y-2">
                       <label
                         htmlFor="csvUpload"
                         className="flex items-center justify-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 cursor-pointer transition-colors"
@@ -545,6 +570,15 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                         <Upload className="w-4 h-4" />
                         <span>Upload CSV File</span>
                       </label>
+                      <button
+                        type="button"
+                        onClick={handleDownloadSampleCsv}
+                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-secondary-600 text-white rounded-md hover:bg-secondary-700 transition-colors"
+                        title="Download sample CSV file"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download Sample CSV</span>
+                      </button>
                       <input
                         type="file"
                         id="csvUpload"
@@ -553,7 +587,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                         className="hidden"
                       />
                       {csvFileName && (
-                        <div className="flex items-center space-x-2 flex-1">
+                        <div className="flex items-center space-x-2 flex-1 min-w-0">
                           <FileText className="w-4 h-4 text-secondary-500" />
                           <span className="text-sm text-secondary-700 truncate">{csvFileName}</span>
                           <button
@@ -578,6 +612,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                             <li>File must be in .csv format</li>
                             <li>No header row - first line should contain a phone number</li>
                             <li>Each line must contain a valid phone number (with or without country code)</li>
+                            <li>Click "Download Sample CSV" above to get a template file</li>
                             <li>Example format:</li>
                           </ul>
                           <div className="mt-2 bg-white p-2 rounded border border-blue-200 font-mono text-xs">
