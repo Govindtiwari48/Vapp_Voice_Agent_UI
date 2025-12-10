@@ -39,6 +39,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [csvFile, setCsvFile] = useState(null)
   const [phoneNumbers, setPhoneNumbers] = useState([])
+  const [originalPhoneNumbers, setOriginalPhoneNumbers] = useState([]) // Store original numbers from CSV
   const [csvError, setCsvError] = useState('')
   const [csvFileName, setCsvFileName] = useState('')
 
@@ -143,6 +144,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
       setCsvFile(null)
       setCsvFileName('')
       setPhoneNumbers([])
+      setOriginalPhoneNumbers([])
       return
     }
 
@@ -159,25 +161,34 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
         if (lines.length === 0) {
           setCsvError('CSV file is empty')
           setPhoneNumbers([])
+          setOriginalPhoneNumbers([])
           return
         }
 
         // Check if first line looks like a header
         const firstLine = lines[0]
-        if (!/^\+?[1-9]\d{1,14}$/.test(firstLine)) {
+        const cleanedFirstLine = firstLine.replace(/[^\d+]/g, '')
+        if (!/^\+?[1-9]\d{1,14}$/.test(cleanedFirstLine)) {
           setCsvError('CSV file should not have a header row. First line should contain a phone number.')
           setPhoneNumbers([])
+          setOriginalPhoneNumbers([])
           return
         }
 
         // Validate all lines are phone numbers
         const validNumbers = []
+        const originalNumbers = [] // Store original numbers without country code
         const invalidLines = []
 
         lines.forEach((line, index) => {
+          // Clean the line: remove all non-digit characters except +
           const cleaned = line.replace(/[^\d+]/g, '')
           if (validatePhoneNumber(cleaned)) {
-            // Format with + if not present and starts with country code
+            // Store original number (remove + if present, keep only digits)
+            const originalNumber = cleaned.replace(/^\+/, '')
+            originalNumbers.push(originalNumber)
+
+            // Format with + if not present and starts with country code (for campaign API)
             const formatted = cleaned.startsWith('+') ? cleaned : (cleaned.length === 10 ? `+91${cleaned}` : `+${cleaned}`)
             validNumbers.push(formatted)
           } else {
@@ -188,27 +199,32 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
         if (invalidLines.length > 0) {
           setCsvError(`Invalid phone numbers found on lines: ${invalidLines.join(', ')}. Each line must contain a valid phone number.`)
           setPhoneNumbers([])
+          setOriginalPhoneNumbers([])
           return
         }
 
         if (validNumbers.length === 0) {
           setCsvError('No valid phone numbers found in the CSV file')
           setPhoneNumbers([])
+          setOriginalPhoneNumbers([])
           return
         }
 
         setPhoneNumbers(validNumbers)
+        setOriginalPhoneNumbers(originalNumbers) // Store original numbers
         setCsvError('')
       } catch (error) {
         console.error('Error parsing CSV:', error)
         setCsvError('Error reading CSV file. Please check the file format.')
         setPhoneNumbers([])
+        setOriginalPhoneNumbers([])
       }
     }
 
     reader.onerror = () => {
       setCsvError('Error reading file. Please try again.')
       setPhoneNumbers([])
+      setOriginalPhoneNumbers([])
     }
 
     reader.readAsText(file)
@@ -218,6 +234,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     setCsvFile(null)
     setCsvFileName('')
     setPhoneNumbers([])
+    setOriginalPhoneNumbers([])
     setCsvError('')
     const fileInput = document.getElementById('csvUpload')
     if (fileInput) {
@@ -229,15 +246,15 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     // Create sample CSV content
     const sampleData = [
       '+919876543210',
-      '+919876543211', 
+      '+919876543211',
       '+919876543212',
       '+919876543213',
       '+919876543214'
     ]
-    
+
     const csvContent = sampleData.join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    
+
     // Create download link
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
@@ -359,6 +376,34 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
       if (response.success && response.data) {
         // Store the campaign ID and pass it to onSave
         const campaignId = response.data._id || response.data.id
+
+        // Call datapush API for outbound campaigns with phone numbers
+        if (!isIncoming && originalPhoneNumbers.length > 0) {
+          try {
+            // Use original phone numbers from CSV (without country code) and join with comma and space
+            const formattedPhoneNumbers = originalPhoneNumbers.join(', ')
+
+            // Build the datapush API URL
+            const datapushUrl = new URL('http://180.150.249.216/webapi/datapush')
+            datapushUrl.searchParams.append('username', 'testapi1@api.com')
+            datapushUrl.searchParams.append('password', '123@123')
+            datapushUrl.searchParams.append('phonenumber', formattedPhoneNumbers)
+            datapushUrl.searchParams.append('callerid', 'fixed')
+            datapushUrl.searchParams.append('voiceid', '5628')
+
+            // Call the datapush API
+            const datapushResponse = await fetch(datapushUrl.toString(), {
+              method: 'GET'
+            })
+
+            const datapushData = await datapushResponse.json()
+            console.log('Datapush API response:', datapushData)
+          } catch (datapushError) {
+            // Log error but don't fail the campaign creation
+            console.error('Error calling datapush API:', datapushError)
+          }
+        }
+
         await onSave({
           ...campaignPayload,
           _id: campaignId,
@@ -616,8 +661,8 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                             <li>Example format:</li>
                           </ul>
                           <div className="mt-2 bg-white p-2 rounded border border-blue-200 font-mono text-xs">
-                            +919876543210<br />
-                            +919876543211<br />
+                            9876543210<br />
+                            9876543211<br />
                             9876543212
                           </div>
                         </div>
