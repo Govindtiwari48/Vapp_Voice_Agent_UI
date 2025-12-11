@@ -44,6 +44,12 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Helper function to format date with time
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
   // Fetch campaigns when type or filters change
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -73,6 +79,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
             name: campaign.name || 'N/A',
             status: campaign.status || 'N/A',
             createdDate: campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString() : 'N/A',
+            createdDateTime: campaign.createdAt ? formatDateTime(campaign.createdAt) : 'N/A',
             // Use nullish coalescing to preserve 0 values, only use null for undefined/null
             totalCalls: campaign.metrics?.totalCalls !== undefined && campaign.metrics?.totalCalls !== null ? campaign.metrics.totalCalls : null,
             successfulCalls: campaign.metrics?.successfulCalls !== undefined && campaign.metrics?.successfulCalls !== null ? campaign.metrics.successfulCalls : null,
@@ -421,7 +428,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-secondary-500">
                         <span className="truncate">ID: {campaign.id || 'N/A'}</span>
                         <span className="hidden sm:inline">•</span>
-                        <span className="truncate">Created: {campaign.createdDate}</span>
+                        <span className="truncate">Created: {campaign.createdDateTime}</span>
                         {campaign.totalCalls !== null && (
                           <>
                             <span className="hidden sm:inline">•</span>

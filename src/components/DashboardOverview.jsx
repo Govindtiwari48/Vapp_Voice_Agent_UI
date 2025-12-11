@@ -965,7 +965,7 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
                                   </span>
                                 )}
                                 {campaign.createdAt && (
-                                  <span>Created: {new Date(campaign.createdAt).toLocaleDateString()}</span>
+                                  <span>Created: {formatDate(campaign.createdAt)}</span>
                                 )}
                               </div>
                             </div>
