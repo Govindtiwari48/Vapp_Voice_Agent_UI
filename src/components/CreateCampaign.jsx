@@ -370,6 +370,9 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
         }
       }
 
+      // Debug: Log the campaign payload to verify phone numbers format
+      console.log('Campaign Payload being sent to API:', JSON.stringify(campaignPayload, null, 2))
+
       // Call the API
       const response = await createCampaign(campaignPayload)
 
