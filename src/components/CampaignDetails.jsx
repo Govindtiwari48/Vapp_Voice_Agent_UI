@@ -629,88 +629,90 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
               {/* Calls Table */}
               {!callsLoading && !callsError && (
                 <>
-                  {calls.length > 0 ? (
-                    <>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-secondary-200">
-                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Phone Number</th>
-                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">VMN</th>
-                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Date</th>
-                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Time</th>
-                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Duration</th>
-                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Status</th>
-                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Type</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {calls.map((call) => {
-                              const dateTime = formatCallDateTime(call.start)
-                              return (
-                                <tr key={call._id || call.id} className="border-b border-secondary-100 hover:bg-secondary-50 transition-colors">
-                                  <td className="py-3 px-4 text-secondary-900">{call.cnum || 'N/A'}</td>
-                                  <td className="py-3 px-4 text-secondary-700">{call.vmn || 'N/A'}</td>
-                                  <td className="py-3 px-4 text-secondary-700">{dateTime.date}</td>
-                                  <td className="py-3 px-4 text-secondary-700">{dateTime.time}</td>
-                                  <td className="py-3 px-4 text-secondary-700">{formatDuration(call.duration)}</td>
-                                  <td className="py-3 px-4">{getStatusBadge(call.status)}</td>
-                                  <td className="py-3 px-4">
-                                    {call.campaignType ? (
-                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.campaignType === 'inbound'
-                                          ? 'bg-green-50 text-green-700 border border-green-200'
-                                          : 'bg-blue-50 text-blue-700 border border-blue-200'
-                                        }`}>
-                                        {call.campaignType === 'inbound' ? 'Inbound' : 'Outbound'}
-                                      </span>
-                                    ) : (
-                                      <span className="text-secondary-500 text-xs">—</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-secondary-50 border-b border-secondary-200">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Phone Number</th>
+                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">VMN</th>
+                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Date</th>
+                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Time</th>
+                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Duration</th>
+                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Status</th>
+                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-secondary-200">
+                        {calls.length > 0 ? (
+                          calls.map((call) => {
+                            const dateTime = formatCallDateTime(call.start)
+                            return (
+                              <tr key={call._id || call.id} className="border-b border-secondary-100 hover:bg-secondary-50 transition-colors">
+                                <td className="py-3 px-4 text-secondary-900">{call.cnum || 'N/A'}</td>
+                                <td className="py-3 px-4 text-secondary-700">{call.vmn || 'N/A'}</td>
+                                <td className="py-3 px-4 text-secondary-700">{dateTime.date}</td>
+                                <td className="py-3 px-4 text-secondary-700">{dateTime.time}</td>
+                                <td className="py-3 px-4 text-secondary-700">{formatDuration(call.duration)}</td>
+                                <td className="py-3 px-4">{getStatusBadge(call.status)}</td>
+                                <td className="py-3 px-4">
+                                  {call.campaignType ? (
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.campaignType === 'inbound'
+                                      ? 'bg-green-50 text-green-700 border border-green-200'
+                                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      }`}>
+                                      {call.campaignType === 'inbound' ? 'Inbound' : 'Outbound'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-secondary-500 text-xs">—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="px-4 py-8 text-center">
+                              <div className="flex flex-col items-center">
+                                <Phone className="w-8 h-8 text-secondary-400 mb-2" />
+                                <p className="text-sm font-medium text-secondary-600">No calls found</p>
+                                <p className="text-xs text-secondary-500 mt-1">
+                                  {campaignTypeFilter
+                                    ? `No ${campaignTypeFilter} calls for this campaign`
+                                    : 'This campaign has no call logs yet'}
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
-                      {/* Pagination */}
-                      {callsPagination.totalPages > 1 && (
-                        <div className="flex items-center justify-between pt-4 mt-4 border-t border-secondary-200">
-                          <div className="text-xs text-secondary-600">
-                            Showing {((callsPagination.currentPage - 1) * callsPagination.limit) + 1} - {Math.min(callsPagination.currentPage * callsPagination.limit, callsPagination.totalRecords)} of {callsPagination.totalRecords} calls
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleCallsPageChange(callsPagination.currentPage - 1)}
-                              disabled={callsPagination.currentPage === 1}
-                              className="px-3 py-1.5 text-xs font-medium rounded border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Previous
-                            </button>
-                            <span className="text-xs text-secondary-600">
-                              Page {callsPagination.currentPage} of {callsPagination.totalPages}
-                            </span>
-                            <button
-                              onClick={() => handleCallsPageChange(callsPagination.currentPage + 1)}
-                              disabled={callsPagination.currentPage >= callsPagination.totalPages}
-                              className="px-3 py-1.5 text-xs font-medium rounded border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Next
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-12 text-secondary-500">
-                      <Phone className="w-12 h-12 mx-auto mb-3 text-secondary-400" />
-                      <p className="text-sm font-medium">No calls found</p>
-                      <p className="text-xs mt-1">
-                        {campaignTypeFilter
-                          ? `No ${campaignTypeFilter} calls for this campaign`
-                          : 'This campaign has no call logs yet'}
-                      </p>
+                  {/* Pagination */}
+                  {calls.length > 0 && callsPagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-secondary-200">
+                      <div className="text-xs text-secondary-600">
+                        Showing {((callsPagination.currentPage - 1) * callsPagination.limit) + 1} - {Math.min(callsPagination.currentPage * callsPagination.limit, callsPagination.totalRecords)} of {callsPagination.totalRecords} calls
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleCallsPageChange(callsPagination.currentPage - 1)}
+                          disabled={callsPagination.currentPage === 1}
+                          className="px-3 py-1.5 text-xs font-medium rounded border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Previous
+                        </button>
+                        <span className="text-xs text-secondary-600">
+                          Page {callsPagination.currentPage} of {callsPagination.totalPages}
+                        </span>
+                        <button
+                          onClick={() => handleCallsPageChange(callsPagination.currentPage + 1)}
+                          disabled={callsPagination.currentPage >= callsPagination.totalPages}
+                          className="px-3 py-1.5 text-xs font-medium rounded border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   )}
                 </>
