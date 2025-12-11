@@ -123,6 +123,8 @@ export const getTwimlTemplate = async () => {
  * @param {string} params.startDate - Filter calls from this date (ISO 8601 format)
  * @param {string} params.endDate - Filter calls up to this date (ISO 8601 format)
  * @param {string} params.status - Filter by call status (ANSWERED, BUSY, NO ANSWER, etc.)
+ * @param {string} params.campaignId - Filter by campaign ID
+ * @param {string} params.campaignType - Filter by campaign type (inbound, outbound)
  * @returns {Promise<Object>} Paginated calls data
  */
 export const getCalls = async (params = {}) => {
@@ -134,6 +136,8 @@ export const getCalls = async (params = {}) => {
         if (params.startDate) queryParams.append('startDate', params.startDate);
         if (params.endDate) queryParams.append('endDate', params.endDate);
         if (params.status) queryParams.append('status', params.status);
+        if (params.campaignId) queryParams.append('campaignId', params.campaignId);
+        if (params.campaignType) queryParams.append('campaignType', params.campaignType);
 
         const url = `${API_BASE_URL}/api/calls${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 
@@ -151,7 +155,9 @@ export const getCalls = async (params = {}) => {
                 currentPage: result.data.pagination?.page || 1,
                 totalPages: result.data.pagination?.totalPages || 1,
                 totalRecords: result.data.pagination?.totalRecords || 0,
-                limit: result.data.pagination?.limit || 20
+                limit: result.data.pagination?.limit || 20,
+                pagination: result.data.pagination || {},
+                filters: result.data.filters || {}
             };
         }
 
@@ -160,7 +166,9 @@ export const getCalls = async (params = {}) => {
             currentPage: 1,
             totalPages: 1,
             totalRecords: 0,
-            limit: 20
+            limit: 20,
+            pagination: {},
+            filters: {}
         };
     } catch (error) {
         return handleError(error);
@@ -188,6 +196,29 @@ export const getCallsByDateRange = async (startDate, endDate, page = 1, limit = 
  */
 export const getCallsByStatus = async (status, page = 1, limit = 20) => {
     return getCalls({ status, page, limit });
+};
+
+/**
+ * Get calls by campaign ID with optional campaign type filter
+ * @param {string} campaignId - Campaign ID
+ * @param {Object} options - Additional options
+ * @param {string} options.campaignType - Filter by campaign type (inbound, outbound)
+ * @param {number} options.page - Page number (default: 1)
+ * @param {number} options.limit - Records per page (default: 20)
+ * @returns {Promise<Object>} Paginated calls data
+ */
+export const getCallsByCampaignId = async (campaignId, options = {}) => {
+    const params = {
+        campaignId,
+        page: options.page || 1,
+        limit: options.limit || 20
+    };
+
+    if (options.campaignType) {
+        params.campaignType = options.campaignType;
+    }
+
+    return getCalls(params);
 };
 
 // ============================================================================

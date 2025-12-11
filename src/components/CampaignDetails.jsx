@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Calendar, Clock, Target, TrendingUp, Phone, Users, CheckCircle, XCircle, AlertCircle, Edit2, Settings as SettingsIcon, X, Loader2, Plus, Trash2 } from 'lucide-react'
-import { updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, updateCampaignStatus } from '../api'
+import { useState, useEffect } from 'react'
+import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Calendar, Clock, Target, TrendingUp, Phone, Users, CheckCircle, XCircle, AlertCircle, Edit2, Settings as SettingsIcon, X, Loader2, Plus, Trash2, Filter } from 'lucide-react'
+import { updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, updateCampaignStatus, getCallsByCampaignId } from '../api'
 
 const CampaignDetails = ({ campaign, onBack, onHome }) => {
   // State for modals
@@ -34,6 +34,67 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
   const [phoneNumbers, setPhoneNumbers] = useState(campaign?.phoneNumbers || [])
   const [newPhoneNumber, setNewPhoneNumber] = useState('')
 
+  // Calls data state
+  const [calls, setCalls] = useState([])
+  const [callsLoading, setCallsLoading] = useState(true)
+  const [callsError, setCallsError] = useState('')
+  const [campaignTypeFilter, setCampaignTypeFilter] = useState('') // '' means all, 'inbound' or 'outbound'
+  const [callsPagination, setCallsPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 20
+  })
+
+  // Get campaign ID once for dependency
+  const campaignId = campaign?._id || campaign?.id
+
+  // Fetch calls when campaign loads or filter/pagination changes
+  useEffect(() => {
+    const fetchCalls = async () => {
+      if (!campaignId) return
+
+      setCallsLoading(true)
+      setCallsError('')
+
+      try {
+        const result = await getCallsByCampaignId(campaignId, {
+          campaignType: campaignTypeFilter || undefined,
+          page: callsPagination.currentPage,
+          limit: callsPagination.limit
+        })
+
+        if (result && result.calls) {
+          setCalls(result.calls)
+          setCallsPagination(prev => ({
+            ...prev,
+            currentPage: result.currentPage || 1,
+            totalPages: result.totalPages || 1,
+            totalRecords: result.totalRecords || 0,
+            limit: result.limit || 20
+          }))
+        } else {
+          setCalls([])
+        }
+      } catch (error) {
+        console.error('Error fetching calls:', error)
+        setCallsError(error.message || 'Failed to load calls')
+        setCalls([])
+      } finally {
+        setCallsLoading(false)
+      }
+    }
+
+    fetchCalls()
+  }, [campaignId, campaignTypeFilter, callsPagination.currentPage])
+
+  // Reset to page 1 when filter changes (using a separate effect to avoid dependency issues)
+  useEffect(() => {
+    if (callsPagination.currentPage !== 1) {
+      setCallsPagination(prev => ({ ...prev, currentPage: 1 }))
+    }
+  }, [campaignTypeFilter])
+
   if (!campaign) {
     return (
       <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
@@ -62,6 +123,43 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Format call date and time
+  const formatCallDateTime = (isoString) => {
+    if (!isoString) return { date: '—', time: '—' }
+    const date = new Date(isoString)
+    return {
+      date: date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+    }
+  }
+
+  // Get status badge component
+  const getStatusBadge = (status) => {
+    if (!status) return <span className="badge">Unknown</span>
+    const upperStatus = status.toUpperCase()
+
+    switch (upperStatus) {
+      case 'ANSWERED':
+        return <span className="badge badge-success">Answered</span>
+      case 'NO ANSWER':
+      case 'NO-ANSWER':
+        return <span className="badge badge-error">No Answer</span>
+      case 'BUSY':
+        return <span className="badge badge-warning">Busy</span>
+      case 'FAILED':
+        return <span className="badge badge-error">Failed</span>
+      case 'CANCELLED':
+        return <span className="badge badge-warning">Cancelled</span>
+      default:
+        return <span className="badge">{status}</span>
+    }
+  }
+
+  // Handle pagination
+  const handleCallsPageChange = (newPage) => {
+    setCallsPagination(prev => ({ ...prev, currentPage: newPage }))
   }
 
   // Calculate success rate - 0 is a valid value, only null/undefined means N/A
@@ -490,6 +588,133 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Call Logs Table */}
+            <div className="card p-5 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-secondary-900">Call Logs</h2>
+
+                {/* Campaign Type Filter */}
+                <div className="flex items-center space-x-2">
+                  <Filter className="w-4 h-4 text-secondary-500" />
+                  <select
+                    value={campaignTypeFilter}
+                    onChange={(e) => setCampaignTypeFilter(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                  >
+                    <option value="">All Types</option>
+                    <option value="outbound">Outbound</option>
+                    <option value="inbound">Inbound</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Loading State */}
+              {callsLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+                  <span className="ml-2 text-sm text-secondary-600">Loading calls...</span>
+                </div>
+              )}
+
+              {/* Error State */}
+              {!callsLoading && callsError && (
+                <div className="flex items-center justify-center py-12">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                  <span className="ml-2 text-sm text-red-600">{callsError}</span>
+                </div>
+              )}
+
+              {/* Calls Table */}
+              {!callsLoading && !callsError && (
+                <>
+                  {calls.length > 0 ? (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-secondary-200">
+                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Phone Number</th>
+                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">VMN</th>
+                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Date</th>
+                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Time</th>
+                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Duration</th>
+                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Status</th>
+                              <th className="text-left py-3 px-4 font-semibold text-secondary-700">Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {calls.map((call) => {
+                              const dateTime = formatCallDateTime(call.start)
+                              return (
+                                <tr key={call._id || call.id} className="border-b border-secondary-100 hover:bg-secondary-50 transition-colors">
+                                  <td className="py-3 px-4 text-secondary-900">{call.cnum || 'N/A'}</td>
+                                  <td className="py-3 px-4 text-secondary-700">{call.vmn || 'N/A'}</td>
+                                  <td className="py-3 px-4 text-secondary-700">{dateTime.date}</td>
+                                  <td className="py-3 px-4 text-secondary-700">{dateTime.time}</td>
+                                  <td className="py-3 px-4 text-secondary-700">{formatDuration(call.duration)}</td>
+                                  <td className="py-3 px-4">{getStatusBadge(call.status)}</td>
+                                  <td className="py-3 px-4">
+                                    {call.campaignType ? (
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.campaignType === 'inbound'
+                                          ? 'bg-green-50 text-green-700 border border-green-200'
+                                          : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                        }`}>
+                                        {call.campaignType === 'inbound' ? 'Inbound' : 'Outbound'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-secondary-500 text-xs">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination */}
+                      {callsPagination.totalPages > 1 && (
+                        <div className="flex items-center justify-between pt-4 mt-4 border-t border-secondary-200">
+                          <div className="text-xs text-secondary-600">
+                            Showing {((callsPagination.currentPage - 1) * callsPagination.limit) + 1} - {Math.min(callsPagination.currentPage * callsPagination.limit, callsPagination.totalRecords)} of {callsPagination.totalRecords} calls
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleCallsPageChange(callsPagination.currentPage - 1)}
+                              disabled={callsPagination.currentPage === 1}
+                              className="px-3 py-1.5 text-xs font-medium rounded border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-xs text-secondary-600">
+                              Page {callsPagination.currentPage} of {callsPagination.totalPages}
+                            </span>
+                            <button
+                              onClick={() => handleCallsPageChange(callsPagination.currentPage + 1)}
+                              disabled={callsPagination.currentPage >= callsPagination.totalPages}
+                              className="px-3 py-1.5 text-xs font-medium rounded border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 text-secondary-500">
+                      <Phone className="w-12 h-12 mx-auto mb-3 text-secondary-400" />
+                      <p className="text-sm font-medium">No calls found</p>
+                      <p className="text-xs mt-1">
+                        {campaignTypeFilter
+                          ? `No ${campaignTypeFilter} calls for this campaign`
+                          : 'This campaign has no call logs yet'}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
