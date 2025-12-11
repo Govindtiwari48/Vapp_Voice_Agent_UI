@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Calendar, Clock, Target, TrendingUp, Phone, Users, CheckCircle, XCircle, AlertCircle, Edit2, Settings as SettingsIcon, X, Loader2, Plus, Trash2, Filter } from 'lucide-react'
 import { updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, updateCampaignStatus, getCallsByCampaignId } from '../api'
+import RecordingPlayer from './RecordingPlayer'
 
 const CampaignDetails = ({ campaign, onBack, onHome }) => {
   // State for modals
@@ -591,7 +592,7 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
             </div>
 
             {/* Call Logs Table */}
-            <div className="card p-5 sm:p-6">
+            <div className="card p-5 sm:p-6 w-full max-w-none">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-secondary-900">Call Logs</h2>
 
@@ -629,63 +630,79 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
               {/* Calls Table */}
               {!callsLoading && !callsError && (
                 <>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-secondary-50 border-b border-secondary-200">
-                        <tr>
-                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Phone Number</th>
-                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">VMN</th>
-                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Date</th>
-                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Time</th>
-                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Duration</th>
-                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Status</th>
-                          <th className="text-left py-3 px-4 font-semibold text-secondary-700">Type</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-secondary-200">
-                        {calls.length > 0 ? (
-                          calls.map((call) => {
-                            const dateTime = formatCallDateTime(call.start)
-                            return (
-                              <tr key={call._id || call.id} className="border-b border-secondary-100 hover:bg-secondary-50 transition-colors">
-                                <td className="py-3 px-4 text-secondary-900">{call.cnum || 'N/A'}</td>
-                                <td className="py-3 px-4 text-secondary-700">{call.vmn || 'N/A'}</td>
-                                <td className="py-3 px-4 text-secondary-700">{dateTime.date}</td>
-                                <td className="py-3 px-4 text-secondary-700">{dateTime.time}</td>
-                                <td className="py-3 px-4 text-secondary-700">{formatDuration(call.duration)}</td>
-                                <td className="py-3 px-4">{getStatusBadge(call.status)}</td>
-                                <td className="py-3 px-4">
-                                  {call.campaignType ? (
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.campaignType === 'inbound'
-                                      ? 'bg-green-50 text-green-700 border border-green-200'
-                                      : 'bg-blue-50 text-blue-700 border border-blue-200'
-                                      }`}>
-                                      {call.campaignType === 'inbound' ? 'Inbound' : 'Outbound'}
-                                    </span>
-                                  ) : (
-                                    <span className="text-secondary-500 text-xs">—</span>
-                                  )}
-                                </td>
-                              </tr>
-                            )
-                          })
-                        ) : (
+                  <div className="overflow-x-auto w-full -mx-5 sm:-mx-6">
+                    <div className="inline-block min-w-full align-middle px-5 sm:px-6">
+                      <table className="w-full text-sm" style={{ tableLayout: 'auto', width: '100%' }}>
+                        <colgroup>
+                          <col style={{ width: '12%' }} />
+                          <col style={{ width: '10%' }} />
+                          <col style={{ width: '12%' }} />
+                          <col style={{ width: '10%' }} />
+                          <col style={{ width: '10%' }} />
+                          <col style={{ width: '12%' }} />
+                          <col style={{ width: '10%' }} />
+                          <col style={{ width: '24%' }} />
+                        </colgroup>
+                        <thead className="bg-secondary-50 border-b border-secondary-200">
                           <tr>
-                            <td colSpan="7" className="px-4 py-8 text-center">
-                              <div className="flex flex-col items-center">
-                                <Phone className="w-8 h-8 text-secondary-400 mb-2" />
-                                <p className="text-sm font-medium text-secondary-600">No calls found</p>
-                                <p className="text-xs text-secondary-500 mt-1">
-                                  {campaignTypeFilter
-                                    ? `No ${campaignTypeFilter} calls for this campaign`
-                                    : 'This campaign has no call logs yet'}
-                                </p>
-                              </div>
-                            </td>
+                            <th className="text-left py-4 px-4 font-semibold text-secondary-700 whitespace-nowrap">Phone Number</th>
+                            <th className="text-left py-4 px-4 font-semibold text-secondary-700 whitespace-nowrap">VMN</th>
+                            <th className="text-left py-4 px-4 font-semibold text-secondary-700 whitespace-nowrap">Date</th>
+                            <th className="text-left py-4 px-4 font-semibold text-secondary-700 whitespace-nowrap">Time</th>
+                            <th className="text-left py-4 px-4 font-semibold text-secondary-700 whitespace-nowrap">Duration</th>
+                            <th className="text-left py-4 px-4 font-semibold text-secondary-700 whitespace-nowrap">Status</th>
+                            <th className="text-left py-4 px-4 font-semibold text-secondary-700 whitespace-nowrap">Type</th>
+                            <th className="text-left py-4 px-4 font-semibold text-secondary-700 whitespace-nowrap">Recording</th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-secondary-200">
+                          {calls.length > 0 ? (
+                            calls.map((call) => {
+                              const dateTime = formatCallDateTime(call.start)
+                              return (
+                                <tr key={call._id || call.id} className="border-b border-secondary-100 hover:bg-secondary-50 transition-colors">
+                                  <td className="py-5 px-4 text-secondary-900 whitespace-nowrap">{call.cnum || 'N/A'}</td>
+                                  <td className="py-5 px-4 text-secondary-700 whitespace-nowrap">{call.vmn || 'N/A'}</td>
+                                  <td className="py-5 px-4 text-secondary-700 whitespace-nowrap">{dateTime.date}</td>
+                                  <td className="py-5 px-4 text-secondary-700 whitespace-nowrap">{dateTime.time}</td>
+                                  <td className="py-5 px-4 text-secondary-700 whitespace-nowrap">{formatDuration(call.duration)}</td>
+                                  <td className="py-5 px-4 whitespace-nowrap">{getStatusBadge(call.status)}</td>
+                                  <td className="py-5 px-4 whitespace-nowrap">
+                                    {call.campaignType ? (
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.campaignType === 'inbound'
+                                        ? 'bg-green-50 text-green-700 border border-green-200'
+                                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                        }`}>
+                                        {call.campaignType === 'inbound' ? 'Inbound' : 'Outbound'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-secondary-500 text-xs">—</span>
+                                    )}
+                                  </td>
+                                  <td className="py-5 px-4">
+                                    <RecordingPlayer recordingUrl={call.recordingUrl} />
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan="8" className="px-6 py-12 text-center">
+                                <div className="flex flex-col items-center">
+                                  <Phone className="w-8 h-8 text-secondary-400 mb-2" />
+                                  <p className="text-sm font-medium text-secondary-600">No calls found</p>
+                                  <p className="text-xs text-secondary-500 mt-1">
+                                    {campaignTypeFilter
+                                      ? `No ${campaignTypeFilter} calls for this campaign`
+                                      : 'This campaign has no call logs yet'}
+                                  </p>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   {/* Pagination */}

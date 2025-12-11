@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { getCallsByCampaignId, formatStartDateForAPI, formatEndDateForAPI, getDateRange } from '../api'
 import StatusFilter from './StatusFilter'
+import RecordingPlayer from './RecordingPlayer'
 
 const filterOptions = [
   { label: 'Today', value: 'today' },
@@ -842,38 +843,38 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
         {/* Call Logs - Desktop Table View */}
         {!loading && (
           <div className="card hidden md:block mb-4 sm:mb-6">
-            <div className="px-4 sm:px-6 py-4 border-b border-secondary-200">
-              <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
-              <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p>
+            <div className="px-6 py-5 border-b border-secondary-200">
+              <h2 className="text-lg font-semibold text-secondary-900">Call Detail Record</h2>
+              {/* <p className="text-sm text-secondary-500 mt-1">Incoming/Outgoing numbers, spend & dispositions</p> */}
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-secondary-50 border-b border-secondary-200">
                   <tr>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-secondary-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-700 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-secondary-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-700 uppercase tracking-wider">
                       Call ID
                     </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-secondary-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-700 uppercase tracking-wider">
                       Phone Number
                     </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-secondary-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-700 uppercase tracking-wider">
                       VMN
                     </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-secondary-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-700 uppercase tracking-wider">
                       Date & Time
                     </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-secondary-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-700 uppercase tracking-wider">
                       Duration
                     </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-secondary-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-700 uppercase tracking-wider">
                       Campaign Type
                     </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-secondary-700 uppercase tracking-wider">
-                      Action
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-700 uppercase tracking-wider min-w-[200px]">
+                      Recording
                     </th>
                   </tr>
                 </thead>
@@ -885,35 +886,35 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                         className="hover:bg-secondary-50 cursor-pointer transition-colors"
                         onClick={() => onSelectCall && onSelectCall(call)}
                       >
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-5 whitespace-nowrap">
                           {getStatusBadge(call.status)}
                         </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-5 whitespace-nowrap">
                           <div className="flex items-center space-x-2">
                             <Phone className="w-4 h-4 text-secondary-400" />
                             <span className="text-sm font-medium text-secondary-900">{call.id?.slice(-8) || 'N/A'}</span>
                           </div>
                         </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-5 whitespace-nowrap">
                           <div className="flex items-center space-x-2">
                             <Phone className="w-4 h-4 text-secondary-400" />
                             <span className="text-sm text-secondary-900">{call.phoneNumber || 'N/A'}</span>
                           </div>
                         </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-5 whitespace-nowrap">
                           <span className="text-sm text-secondary-700">{call.vmn || 'N/A'}</span>
                         </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-5 whitespace-nowrap">
                           <div className="text-sm text-secondary-900">{call.date || '—'}</div>
                           <div className="text-xs text-secondary-500">{call.time || '—'}</div>
                         </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-5 whitespace-nowrap">
                           <div className="flex items-center space-x-1.5">
                             <Clock className="w-4 h-4 text-secondary-400" />
                             <span className="text-sm text-secondary-900">{call.duration || '0:00'}</span>
                           </div>
                         </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-5 whitespace-nowrap">
                           {call.campaignType ? (
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${call.campaignType === 'inbound'
                               ? 'bg-green-50 text-green-700 border border-green-200'
@@ -925,26 +926,14 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                             <span className="text-sm text-secondary-500">—</span>
                           )}
                         </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                          {call.recordingUrl ? (
-                            <a
-                              href={call.recordingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                            >
-                              View
-                            </a>
-                          ) : (
-                            <span className="text-sm text-secondary-500">—</span>
-                          )}
+                        <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                          <RecordingPlayer recordingUrl={call.recordingUrl} />
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="8" className="px-4 sm:px-6 py-8 text-center">
+                      <td colSpan="8" className="px-6 py-12 text-center">
                         <div className="flex flex-col items-center">
                           <Phone className="w-8 h-8 text-secondary-400 mb-2" />
                           <p className="text-sm font-medium text-secondary-600">No calls found</p>
@@ -966,7 +955,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           <div className="md:hidden space-y-3 mb-4 sm:mb-6">
             <div className="mb-3">
               <h2 className="text-base font-semibold text-secondary-900">Call Detail Record</h2>
-              <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p>
+              {/* <p className="text-xs text-secondary-500 mt-0.5">Incoming/Outgoing numbers, spend & dispositions</p> */}
             </div>
             {displayCalls.length > 0 ? (
               displayCalls.map((call) => (
@@ -1009,16 +998,11 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     )}
 
                     {call.recordingUrl && (
-                      <div className="pt-2 border-t border-secondary-200">
-                        <a
-                          href={call.recordingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-                        >
-                          View Recording
-                        </a>
+                      <div className="pt-2 border-t border-secondary-200" onClick={(e) => e.stopPropagation()}>
+                        <div className="mb-1">
+                          <p className="text-xs font-medium text-secondary-500 mb-2">Recording</p>
+                        </div>
+                        <RecordingPlayer recordingUrl={call.recordingUrl} />
                       </div>
                     )}
                   </div>

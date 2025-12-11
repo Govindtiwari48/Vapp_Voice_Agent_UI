@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft, CalendarRange, Download, Home, TrendingUp, TrendingDown, Loader2, AlertCircle, Phone, Clock, PlayCircle, Target, PhoneIncoming, PhoneOutgoing, Eye } from 'lucide-react'
 import { getDashboardOverview, getDashboardMetrics, getCalls, getCampaigns } from '../api'
 import StatusFilter from './StatusFilter'
+import RecordingPlayer from './RecordingPlayer'
 
 // Status filter options based on backend API
 const statusFilterOptions = [
@@ -817,13 +818,9 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
                           <p className="text-xs text-secondary-500">Duration</p>
                         </div>
                         {call.recordingUrl && (
-                          <button
-                            onClick={() => window.open(call.recordingUrl, '_blank')}
-                            className="p-1 hover:bg-primary-50 rounded-lg transition-colors"
-                            title="Play Recording"
-                          >
-                            <PlayCircle className="w-4 h-4 text-primary-600" />
-                          </button>
+                          <div className="min-w-[200px]" onClick={(e) => e.stopPropagation()}>
+                            <RecordingPlayer recordingUrl={call.recordingUrl} />
+                          </div>
                         )}
                       </div>
                     </div>

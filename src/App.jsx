@@ -193,6 +193,15 @@ function App() {
   }
 
   const handleCampaignClick = async (campaign) => {
+    // Determine campaign type and redirect to appropriate page
+    const campaignType = campaign?.campaignType || campaign?.type
+
+    // Map API campaign type to internal type
+    const internalType = campaignType === 'inbound' ? 'incoming' : 'outgoing'
+
+    // Set the campaign type and navigate to campaigns page
+    setSelectedCampaignType(internalType)
+
     // If campaign has an ID, fetch full details from API
     if (campaign && (campaign._id || campaign.id)) {
       try {
@@ -200,23 +209,23 @@ function App() {
         const campaignDetails = await getCampaignById(campaignId)
 
         if (campaignDetails) {
-          setSelectedCampaignDetails(campaignDetails)
-          setView('campaignDetails')
+          setSelectedCampaign(campaignDetails)
+          setView('callLogs')
         } else {
           // Fallback to passed campaign data if API call fails
-          setSelectedCampaignDetails(campaign)
-          setView('campaignDetails')
+          setSelectedCampaign(campaign)
+          setView('callLogs')
         }
       } catch (error) {
         console.error('Error fetching campaign details:', error)
         // Fallback to passed campaign data if API call fails
-        setSelectedCampaignDetails(campaign)
-        setView('campaignDetails')
+        setSelectedCampaign(campaign)
+        setView('callLogs')
       }
     } else {
       // Use passed campaign data directly
-      setSelectedCampaignDetails(campaign)
-      setView('campaignDetails')
+      setSelectedCampaign(campaign)
+      setView('callLogs')
     }
   }
 

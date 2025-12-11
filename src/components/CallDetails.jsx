@@ -17,6 +17,7 @@ import {
   Tag,
   TrendingUp
 } from 'lucide-react'
+import RecordingPlayer from './RecordingPlayer'
 
 const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
   // Helper function to display value or NA (but show 0 if value is 0)
@@ -143,18 +144,10 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               </div>
 
               <div className="mt-4 pt-4 border-t border-secondary-200">
-                <p className="text-xs text-secondary-500 mb-2">Voice Recording</p>
+                <p className="text-xs text-secondary-500 mb-3 font-medium">Voice Recording</p>
                 {call?.recordingUrl ? (
-                  <div className="flex items-center space-x-3 bg-secondary-50 p-3 rounded-lg">
-                    <button className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors">
-                      <Play className="w-4 h-4 text-white" />
-                    </button>
-                    <div className="flex-1">
-                      <div className="h-1.5 bg-secondary-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary-600 w-0" style={{ width: '0%' }}></div>
-                      </div>
-                    </div>
-                    <span className="text-xs text-secondary-500">{displayValue(call?.duration)}</span>
+                  <div className="bg-secondary-50 p-4 rounded-lg">
+                    <RecordingPlayer recordingUrl={call.recordingUrl} />
                   </div>
                 ) : (
                   <p className="text-sm text-secondary-600">NA</p>
