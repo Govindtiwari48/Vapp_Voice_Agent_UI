@@ -37,7 +37,17 @@ const handleResponse = async (response) => {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.message || `API Error: ${response.status}`);
+        // Create error with proper message from backend response structure
+        const errorMessage = data.message || data.error || `API Error: ${response.status}`;
+        const error = new Error(errorMessage);
+        // Attach full error data for detailed handling
+        error.response = {
+            status: response.status,
+            data: data,
+            error: data.error,
+            details: data.details
+        };
+        throw error;
     }
 
     return data;
@@ -534,6 +544,7 @@ export const getCampaigns = async (params = {}) => {
             queryParams.append('type', params.campaignType);
         }
         if (params.status) queryParams.append('status', params.status);
+        if (params.search) queryParams.append('search', params.search);
 
         const url = `${API_BASE_URL}/api/campaigns${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 
@@ -676,6 +687,24 @@ export const updateCampaignSettings = async (campaignId, settings) => {
  */
 export const updateCampaignPhoneNumbers = async (campaignId, phoneNumbers) => {
     return updateCampaign(campaignId, { phoneNumbers });
+};
+
+/**
+ * Delete a campaign
+ * @param {string} campaignId - Campaign ID
+ * @returns {Promise<Object>} Deletion response with campaign details
+ */
+export const deleteCampaign = async (campaignId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaignId}`, {
+            method: 'DELETE',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
 };
 
 // Export API base URL for direct use if needed

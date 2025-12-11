@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, Clock, CheckCircle, TrendingUp, Plus, Pause, Play, Loader2, AlertCircle, Edit2, Settings, X } from 'lucide-react'
-import { getCampaigns, updateCampaignStatus, updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers } from '../api'
+import { useState, useEffect, useRef } from 'react'
+import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, Clock, CheckCircle, TrendingUp, Plus, Pause, Play, Loader2, AlertCircle, Edit2, Settings, X, Search, Trash2 } from 'lucide-react'
+import { getCampaigns, updateCampaignStatus, updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, deleteCampaign } from '../api'
 
 const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack, onHome, onCreateCampaign, onToggleCampaignStatus }) => {
   const isIncoming = type === 'incoming'
@@ -14,12 +14,18 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
     limit: 10
   })
   const [statusFilter, setStatusFilter] = useState('') // Status filter
+  const [searchQuery, setSearchQuery] = useState('') // Search input value
+  const [activeSearchQuery, setActiveSearchQuery] = useState('') // Active search query used for API calls
   const [updating, setUpdating] = useState(null) // Track which campaign is being updated
+  const [deleting, setDeleting] = useState(null) // Track which campaign is being deleted
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false) // Delete confirmation modal
+  const [campaignToDelete, setCampaignToDelete] = useState(null) // Campaign to delete
 
   // Edit modal states
   const [editingCampaign, setEditingCampaign] = useState(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', description: '', status: '' })
+  const [editErrors, setEditErrors] = useState({})
 
   // Settings modal states
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
@@ -50,6 +56,104 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
+  // Calculate Levenshtein distance for fuzzy matching
+  const levenshteinDistance = (str1, str2) => {
+    const matrix = []
+    const len1 = str1.length
+    const len2 = str2.length
+
+    if (len1 === 0) return len2
+    if (len2 === 0) return len1
+
+    for (let i = 0; i <= len2; i++) {
+      matrix[i] = [i]
+    }
+
+    for (let j = 0; j <= len1; j++) {
+      matrix[0][j] = j
+    }
+
+    for (let i = 1; i <= len2; i++) {
+      for (let j = 1; j <= len1; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1]
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          )
+        }
+      }
+    }
+
+    return matrix[len2][len1]
+  }
+
+  // Calculate similarity score (0-1, where 1 is exact match)
+  const calculateSimilarity = (str1, str2) => {
+    const longer = str1.length > str2.length ? str1 : str2
+    const shorter = str1.length > str2.length ? str2 : str1
+
+    if (longer.length === 0) return 1.0
+
+    const distance = levenshteinDistance(longer.toLowerCase(), shorter.toLowerCase())
+    return (longer.length - distance) / longer.length
+  }
+
+  // Professional search function with fuzzy matching
+  const performSearch = (campaigns, query) => {
+    if (!query || !query.trim()) {
+      return campaigns
+    }
+
+    const searchTerm = query.trim().toLowerCase()
+    const results = []
+
+    // Step 1: Exact match (case-insensitive)
+    const exactMatches = campaigns.filter(campaign =>
+      campaign.name.toLowerCase() === searchTerm
+    )
+
+    // Step 2: Partial match (contains)
+    const partialMatches = campaigns.filter(campaign => {
+      const name = campaign.name.toLowerCase()
+      return name.includes(searchTerm) && !exactMatches.includes(campaign)
+    })
+
+    // Step 3: Fuzzy match (similarity > 0.6)
+    const fuzzyMatches = campaigns.filter(campaign => {
+      if (exactMatches.includes(campaign) || partialMatches.includes(campaign)) {
+        return false
+      }
+      const similarity = calculateSimilarity(campaign.name, searchTerm)
+      return similarity >= 0.6
+    })
+
+    // Combine results: exact matches first, then partial, then fuzzy
+    return [...exactMatches, ...partialMatches, ...fuzzyMatches]
+  }
+
+  // Handle search button click or Enter key
+  const handleSearch = () => {
+    setActiveSearchQuery(searchQuery.trim())
+    setPagination(prev => ({ ...prev, currentPage: 1 }))
+  }
+
+  // Handle Enter key in search input
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchQuery('')
+    setActiveSearchQuery('')
+    setPagination(prev => ({ ...prev, currentPage: 1 }))
+  }
+
   // Fetch campaigns when type or filters change
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -70,11 +174,16 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
           params.status = statusFilter
         }
 
+        // Add search query if provided (use active search query)
+        if (activeSearchQuery.trim()) {
+          params.search = activeSearchQuery.trim()
+        }
+
         const result = await getCampaigns(params)
 
         if (result && result.campaigns) {
           // Transform API campaign data to match component expectations
-          const transformedCampaigns = result.campaigns.map(campaign => ({
+          let transformedCampaigns = result.campaigns.map(campaign => ({
             id: campaign._id,
             name: campaign.name || 'N/A',
             status: campaign.status || 'N/A',
@@ -88,6 +197,12 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
             // Store full campaign data for details view
             _fullData: campaign
           }))
+
+          // Apply professional fuzzy search if search query is provided
+          // This enhances backend search with client-side fuzzy matching
+          if (activeSearchQuery.trim()) {
+            transformedCampaigns = performSearch(transformedCampaigns, activeSearchQuery)
+          }
 
           setCampaigns(transformedCampaigns)
           setPagination(result.pagination || pagination)
@@ -105,7 +220,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
 
     fetchCampaigns()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, apiType, pagination.currentPage, statusFilter])
+  }, [type, apiType, pagination.currentPage, statusFilter, activeSearchQuery])
 
   // Update campaigns when propCampaigns changes (for external updates)
   // Only use propCampaigns if explicitly provided and not empty
@@ -166,6 +281,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
       description: fullData.description || '',
       status: fullData.status || 'active'
     })
+    setEditErrors({})
     setEditModalOpen(true)
   }
 
@@ -175,6 +291,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
 
     const campaignId = editingCampaign._id || editingCampaign.id
     setUpdating(campaignId)
+    setEditErrors({})
 
     try {
       const result = await updateCampaignBasicInfo(campaignId, editForm)
@@ -200,10 +317,27 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
         }))
         setEditModalOpen(false)
         setEditingCampaign(null)
+        setEditForm({ name: '', description: '', status: '' })
+      } else {
+        throw new Error(result.message || 'Failed to update campaign')
       }
     } catch (error) {
       console.error('Failed to update campaign:', error)
-      setError(error.message || 'Failed to update campaign')
+
+      // Check if error is related to unique campaign name
+      const errorMessage = error.message || 'Failed to update campaign'
+      const isUniqueNameError = errorMessage.toLowerCase().includes('name') &&
+        (errorMessage.toLowerCase().includes('unique') ||
+          errorMessage.toLowerCase().includes('already exists') ||
+          errorMessage.toLowerCase().includes('duplicate'))
+
+      if (isUniqueNameError) {
+        setEditErrors({
+          name: 'Campaign name already exists. Please choose a different name.'
+        })
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setUpdating(null)
     }
@@ -275,6 +409,45 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
     setPagination(prev => ({ ...prev, currentPage: newPage }))
   }
 
+  // Handle delete campaign
+  const handleDeleteClick = (campaign, e) => {
+    e.stopPropagation()
+    setCampaignToDelete(campaign)
+    setDeleteConfirmOpen(true)
+  }
+
+  // Confirm delete campaign
+  const handleConfirmDelete = async () => {
+    if (!campaignToDelete) return
+
+    const campaignId = campaignToDelete.id || campaignToDelete._id
+    setDeleting(campaignId)
+
+    try {
+      const result = await deleteCampaign(campaignId)
+
+      if (result.success) {
+        // Remove campaign from local state
+        setCampaigns(prev => prev.filter(c => (c.id !== campaignId && c._id !== campaignId)))
+        // Reset pagination if needed
+        if (campaigns.length === 1 && pagination.currentPage > 1) {
+          setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))
+        }
+        setDeleteConfirmOpen(false)
+        setCampaignToDelete(null)
+      } else {
+        throw new Error(result.message || 'Failed to delete campaign')
+      }
+    } catch (error) {
+      console.error('Failed to delete campaign:', error)
+      setError(error.message || 'Failed to delete campaign')
+      setDeleteConfirmOpen(false)
+      setCampaignToDelete(null)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-secondary-50">
       {/* Header */}
@@ -332,40 +505,85 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Filters Section */}
         <div className="card p-4 mb-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex-1">
-              <p className="text-xs text-secondary-500 mb-1">Filter Campaigns</p>
-              <div className="flex items-center gap-3">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value)
-                    setPagination(prev => ({ ...prev, currentPage: 1 }))
-                  }}
-                  className="input text-sm py-2 px-3 pr-8"
-                  disabled={loading}
-                >
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="paused">Paused</option>
-                  <option value="completed">Completed</option>
-                  <option value="draft">Draft</option>
-                </select>
-                {statusFilter && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex-1 w-full">
+                <p className="text-xs text-secondary-500 mb-1">Search Campaign Name</p>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-secondary-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={handleSearchKeyPress}
+                      placeholder="Search by campaign name..."
+                      className="input text-sm py-2 pl-10 pr-4 w-full"
+                      disabled={loading}
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={handleClearSearch}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
+                        title="Clear search"
+                        type="button"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                   <button
-                    onClick={() => {
-                      setStatusFilter('')
-                      setPagination(prev => ({ ...prev, currentPage: 1 }))
-                    }}
-                    className="text-sm text-secondary-600 hover:text-secondary-900"
+                    onClick={handleSearch}
+                    disabled={loading || !searchQuery.trim()}
+                    className="btn-primary flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                    type="button"
                   >
-                    Clear Filter
+                    <Search className="w-4 h-4" />
+                    <span className="hidden sm:inline">Search</span>
                   </button>
+                </div>
+                {activeSearchQuery && (
+                  <p className="text-xs text-secondary-500 mt-1">
+                    Showing results for: <span className="font-medium text-secondary-700">"{activeSearchQuery}"</span>
+                  </p>
                 )}
               </div>
             </div>
-            <div className="text-xs text-secondary-500">
-              Showing {campaigns.length} of {pagination.totalRecords} campaigns
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-xs text-secondary-500 mb-1">Filter Campaigns</p>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value)
+                      setPagination(prev => ({ ...prev, currentPage: 1 }))
+                    }}
+                    className="input text-sm py-2 px-3 pr-8"
+                    disabled={loading}
+                  >
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="completed">Completed</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                  {statusFilter && (
+                    <button
+                      onClick={() => {
+                        setStatusFilter('')
+                        setPagination(prev => ({ ...prev, currentPage: 1 }))
+                      }}
+                      className="text-sm text-secondary-600 hover:text-secondary-900"
+                    >
+                      Clear Filter
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="text-xs text-secondary-500">
+                Showing {campaigns.length} of {pagination.totalRecords} campaigns
+              </div>
             </div>
           </div>
         </div>
@@ -444,7 +662,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                         className="p-2 rounded-lg transition-colors hover:bg-blue-100 text-blue-600"
                         title="Edit Campaign"
                         aria-label="Edit Campaign"
-                        disabled={updating === campaign.id}
+                        disabled={updating === campaign.id || deleting === campaign.id}
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -456,7 +674,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                           className="p-2 rounded-lg transition-colors hover:bg-purple-100 text-purple-600"
                           title="Campaign Settings"
                           aria-label="Campaign Settings"
-                          disabled={updating === campaign.id}
+                          disabled={updating === campaign.id || deleting === campaign.id}
                         >
                           <Settings className="w-4 h-4" />
                         </button>
@@ -471,7 +689,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                           }`}
                         title={campaign.status === 'active' ? 'Pause Campaign' : 'Activate Campaign'}
                         aria-label={campaign.status === 'active' ? 'Pause Campaign' : 'Activate Campaign'}
-                        disabled={updating === campaign.id}
+                        disabled={updating === campaign.id || deleting === campaign.id}
                       >
                         {updating === campaign.id ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -479,6 +697,21 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                           <Pause className="w-5 h-5" />
                         ) : (
                           <Play className="w-5 h-5" />
+                        )}
+                      </button>
+
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => handleDeleteClick(campaign, e)}
+                        className="p-2 rounded-lg transition-colors hover:bg-red-100 text-red-600"
+                        title="Delete Campaign"
+                        aria-label="Delete Campaign"
+                        disabled={updating === campaign.id || deleting === campaign.id}
+                      >
+                        {deleting === campaign.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
                         )}
                       </button>
                     </div>
@@ -588,10 +821,19 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                   <input
                     type="text"
                     value={editForm.name}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="input w-full"
+                    onChange={(e) => {
+                      setEditForm({ ...editForm, name: e.target.value })
+                      // Clear error when user starts typing
+                      if (editErrors.name) {
+                        setEditErrors({ ...editErrors, name: '' })
+                      }
+                    }}
+                    className={`input w-full ${editErrors.name ? 'border-red-500' : ''}`}
                     placeholder="Enter campaign name"
                   />
+                  {editErrors.name && (
+                    <p className="mt-1 text-sm text-red-600">{editErrors.name}</p>
+                  )}
                 </div>
 
                 <div>
@@ -780,6 +1022,67 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                   onClick={() => setSettingsModalOpen(false)}
                   className="btn-secondary flex-1"
                   disabled={updating}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && campaignToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-secondary-900">Delete Campaign</h3>
+                <button
+                  onClick={() => {
+                    setDeleteConfirmOpen(false)
+                    setCampaignToDelete(null)
+                  }}
+                  className="p-1 hover:bg-secondary-100 rounded-lg transition-colors"
+                  disabled={deleting}
+                >
+                  <X className="w-5 h-5 text-secondary-600" />
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm text-secondary-700 mb-2">
+                  Are you sure you want to delete this campaign? This action cannot be undone.
+                </p>
+                <div className="bg-secondary-50 rounded-lg p-3 mt-3">
+                  <p className="text-sm font-medium text-secondary-900">Campaign Name:</p>
+                  <p className="text-sm text-secondary-700">{campaignToDelete.name}</p>
+                  <p className="text-xs text-secondary-500 mt-1">ID: {campaignToDelete.id || campaignToDelete._id}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={deleting}
+                  className="btn-primary flex-1 bg-red-600 hover:bg-red-700"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Campaign'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setDeleteConfirmOpen(false)
+                    setCampaignToDelete(null)
+                  }}
+                  className="btn-secondary flex-1"
+                  disabled={deleting}
                 >
                   Cancel
                 </button>

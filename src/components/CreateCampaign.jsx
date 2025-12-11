@@ -42,6 +42,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
   const [originalPhoneNumbers, setOriginalPhoneNumbers] = useState([]) // Store original numbers from CSV
   const [csvError, setCsvError] = useState('')
   const [csvFileName, setCsvFileName] = useState('')
+  const [popupError, setPopupError] = useState(null)
 
   const categories = [
     'Real Estate',
@@ -417,7 +418,30 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
       }
     } catch (error) {
       console.error('Error creating campaign:', error)
-      setErrors({ submit: error.message || 'Failed to create campaign. Please try again.' })
+
+      // Check if error is related to unique campaign name
+      const errorData = error.response?.data || {}
+      const errorMessage = error.response?.error || error.message || 'Failed to create campaign. Please try again.'
+      const errorDetails = error.response?.details || []
+
+      const isUniqueNameError = errorData.error?.toLowerCase().includes('unique') ||
+        errorData.error?.toLowerCase().includes('already exists') ||
+        errorMessage.toLowerCase().includes('unique') ||
+        errorMessage.toLowerCase().includes('already exists') ||
+        errorMessage.toLowerCase().includes('duplicate') ||
+        (errorDetails.length > 0 && errorDetails[0]?.toLowerCase().includes('already exists'))
+
+      if (isUniqueNameError) {
+        // Set error on the name field for unique name validation with professional message
+        setErrors({
+          name: 'Campaign Name Already Exists. Try Different Campaign Name.'
+        })
+        // Show popup notification
+        setPopupError('Campaign Name Already Exists. Try Different Campaign Name.')
+      } else {
+        // Show generic error message for other errors
+        setErrors({ submit: errorMessage })
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -492,7 +516,12 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                   placeholder="e.g., SS Cendana Property Outreach"
                   required
                 />
-                {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                {errors.name && (
+                  <div className="mt-2 flex items-start space-x-2 bg-red-50 border border-red-200 rounded-md p-3">
+                    <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700 font-medium">{errors.name}</p>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -876,8 +905,9 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
 
           {/* Error Message */}
           {errors.submit && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-sm text-red-600">{errors.submit}</p>
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{errors.submit}</p>
             </div>
           )}
 
@@ -902,6 +932,25 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
           </div>
         </form>
       </div>
+
+      {/* Error Popup */}
+      {popupError && (
+        <div className="fixed bottom-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg z-50 max-w-md">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">Error</p>
+              <p className="text-sm text-red-700 mt-1">{popupError}</p>
+            </div>
+            <button
+              onClick={() => setPopupError(null)}
+              className="p-1 hover:bg-red-100 rounded transition-colors"
+            >
+              <X className="w-4 h-4 text-red-600" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
