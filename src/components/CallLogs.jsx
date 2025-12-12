@@ -17,7 +17,7 @@ import {
   TrendingUp,
   Users
 } from 'lucide-react'
-import { getCallsByCampaignId, formatStartDateForAPI, formatEndDateForAPI, getDateRange } from '../api'
+import { getCallsByCampaignId, getCallsByTID, formatStartDateForAPI, formatEndDateForAPI, getDateRange } from '../api'
 import StatusFilter from './StatusFilter'
 import RecordingPlayer from './RecordingPlayer'
 
@@ -88,14 +88,32 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           }
         }
 
-        const result = await getCallsByCampaignId(campaignId, {
-          campaignType: campaignTypeFilter || undefined,
-          status: statusFilter || undefined,
-          startDate: dateRange?.startDate,
-          endDate: dateRange?.endDate,
-          page: pagination.currentPage,
-          limit: pagination.limit
-        })
+        // Use TIDs if available, otherwise fallback to campaignId
+        let result
+        if (campaign?.tids && campaign.tids.length > 0) {
+          // Fetch calls using TID(s) from campaign
+          result = await getCallsByTID(
+            campaign.tids, // Array of TIDs
+            {
+              campaignType: campaignTypeFilter || undefined,
+              status: statusFilter || undefined,
+              startDate: dateRange?.startDate,
+              endDate: dateRange?.endDate,
+              page: pagination.currentPage,
+              limit: pagination.limit
+            }
+          )
+        } else {
+          // Fallback: fetch calls by campaignId if no TIDs
+          result = await getCallsByCampaignId(campaignId, {
+            campaignType: campaignTypeFilter || undefined,
+            status: statusFilter || undefined,
+            startDate: dateRange?.startDate,
+            endDate: dateRange?.endDate,
+            page: pagination.currentPage,
+            limit: pagination.limit
+          })
+        }
 
         if (result && result.calls) {
           setCalls(result.calls)
@@ -120,7 +138,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
     fetchCalls()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId, activeFilter, statusFilter, campaignTypeFilter, pagination.currentPage, customDates.startDate, customDates.endDate])
+  }, [campaignId, campaign?.tids, activeFilter, statusFilter, campaignTypeFilter, pagination.currentPage, customDates.startDate, customDates.endDate])
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter)
@@ -410,7 +428,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     ) : null}
                   </div>
                   <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                    {displayValue(campaign?.id || campaign?._id)}{campaign?.tid && ` • TID: ${campaign.tid}`} • {pagination.totalRecords > 0 ? `${pagination.totalRecords} call${pagination.totalRecords !== 1 ? 's' : ''}` : 'Loading calls...'}
+                    {displayValue(campaign?.id || campaign?._id)}{campaign?.tids && campaign.tids.length > 0 && ` • TID: ${campaign.tids.join(', ')}`} • {pagination.totalRecords > 0 ? `${pagination.totalRecords} call${pagination.totalRecords !== 1 ? 's' : ''}` : 'Loading calls...'}
                   </p>
                 </div>
               </div>
@@ -467,10 +485,16 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                   <p className="text-xs text-secondary-500 mb-1">Campaign Name</p>
                   <p className="text-sm font-medium text-secondary-900">{campaign?.name || 'N/A'}</p>
                 </div>
-                {campaign?.tid && (
+                {campaign?.tids && campaign.tids.length > 0 && (
                   <div>
-                    <p className="text-xs text-secondary-500 mb-1">TID</p>
-                    <p className="text-sm font-medium text-secondary-900">{campaign.tid}</p>
+                    <p className="text-xs text-secondary-500 mb-1">TID(s)</p>
+                    <div className="flex flex-wrap gap-1">
+                      {campaign.tids.map((tid, index) => (
+                        <span key={index} className="text-sm font-medium text-secondary-900 bg-gray-100 px-2 py-1 rounded">
+                          {tid}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {campaign?.category && (
