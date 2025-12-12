@@ -12,7 +12,7 @@ import WalletTopUp from './components/WalletTopUp'
 import Login from './components/Login'
 import SessionWarning from './components/SessionWarning'
 import { isAuthenticated, getUser, clearAuth, updateLastActivity } from './api/auth'
-import { getCampaignById } from './api'
+import { getCampaignById, getCreditBalance } from './api'
 import sessionManager from './utils/sessionManager'
 import {
   LayoutGrid,
@@ -24,7 +24,8 @@ import {
   Phone,
   Menu,
   X,
-  LogOut
+  LogOut,
+  RefreshCw
 } from 'lucide-react'
 
 function App() {
@@ -40,6 +41,8 @@ function App() {
   const [showSessionWarning, setShowSessionWarning] = useState(false)
   const [warningRemainingTime, setWarningRemainingTime] = useState(0)
   const [dashboardResetKey, setDashboardResetKey] = useState(0)
+  const [balanceData, setBalanceData] = useState(null)
+  const [loadingBalance, setLoadingBalance] = useState(false)
 
   // Check authentication on mount and set up session management
   useEffect(() => {
@@ -57,6 +60,8 @@ function App() {
             setWarningRemainingTime(remainingTime)
             setShowSessionWarning(true)
           })
+          // Load balance data
+          loadBalanceData()
         } else {
           clearAuth()
           setIsAuthenticatedState(false)
@@ -72,6 +77,41 @@ function App() {
       sessionManager.stop()
     }
   }, [])
+
+  // Load balance data
+  const loadBalanceData = async () => {
+    try {
+      setLoadingBalance(true)
+      const response = await getCreditBalance()
+      if (response.success) {
+        setBalanceData(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading balance:', error)
+    } finally {
+      setLoadingBalance(false)
+    }
+  }
+
+  // Refresh balance data periodically
+  useEffect(() => {
+    if (isAuthenticatedState) {
+      // Refresh balance every 30 seconds
+      const interval = setInterval(() => {
+        loadBalanceData()
+      }, 30000)
+
+      return () => clearInterval(interval)
+    }
+  }, [isAuthenticatedState])
+
+  const formatCurrency = (value, currency = 'INR') => {
+    if (!value && value !== 0) return 'N/A'
+    if (currency === 'USD') {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
+    }
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
+  }
 
   // Handle successful login
   const handleLogin = (userData) => {
@@ -387,6 +427,52 @@ function App() {
           {/* User Info and Logout */}
           {user && (
             <div className="pt-4 border-t border-secondary-200 space-y-3">
+              {/* Balance Section */}
+              <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-3 border border-primary-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <Wallet className="w-4 h-4 text-primary-600" />
+                    <p className="text-xs font-semibold text-primary-900 uppercase tracking-wide">
+                      Wallet Balance
+                    </p>
+                  </div>
+                  <button
+                    onClick={loadBalanceData}
+                    disabled={loadingBalance}
+                    className="p-1 hover:bg-primary-200 rounded transition-colors"
+                    title="Refresh balance"
+                  >
+                    <RefreshCw className={`w-3 h-3 text-primary-600 ${loadingBalance ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+                {loadingBalance ? (
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw className="w-3 h-3 text-primary-600 animate-spin" />
+                    <p className="text-xs text-primary-600">Loading...</p>
+                  </div>
+                ) : balanceData ? (
+                  <div>
+                    <p className="text-xl font-bold text-primary-900">
+                      {formatCurrency(balanceData.balance, balanceData.currency)}
+                    </p>
+                    <p className="text-xs text-primary-700 mt-0.5">
+                      {balanceData.currency} • {balanceData.autoTopup?.enabled ? 'Auto top-up enabled' : 'Manual top-up'}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-primary-700">Unable to load balance</p>
+                )}
+                <button
+                  onClick={() => {
+                    handleNavigateSection('wallet')
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="mt-2 w-full bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium py-1.5 rounded transition-colors"
+                >
+                  Add Credits
+                </button>
+              </div>
+
               {/* User Profile Section */}
               <div className="bg-secondary-50 rounded-lg p-3">
                 <div className="flex items-start justify-between">
@@ -463,7 +549,11 @@ function App() {
         )}
 
         {view === 'wallet' && (
-          <WalletTopUp onBack={handleBack} onHome={handleHome} />
+          <WalletTopUp 
+            onBack={handleBack} 
+            onHome={handleHome} 
+            onBalanceUpdate={loadBalanceData}
+          />
         )}
 
         {view === 'campaigns' && (

@@ -746,6 +746,119 @@ export const deleteCampaign = async (campaignId) => {
     }
 };
 
+// ============================================================================
+// CREDITS/WALLET MANAGEMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * Get current credit balance and auto-topup settings
+ * @returns {Promise<Object>} Balance information
+ */
+export const getCreditBalance = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/credits/balance`, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Get credit transactions history
+ * @param {Object} params - Query parameters
+ * @param {number} params.limit - Number of transactions to retrieve (default: 50)
+ * @returns {Promise<Object>} Transactions list
+ */
+export const getCreditTransactions = async (params = {}) => {
+    try {
+        const queryParams = new URLSearchParams();
+        if (params.limit) queryParams.append('limit', params.limit);
+
+        const url = `${API_BASE_URL}/api/credits/transactions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Top up credits
+ * @param {Object} topupData - Top up data
+ * @param {number} topupData.amount - Amount to top up
+ * @param {string} topupData.currency - Currency (INR, USD, etc.)
+ * @param {string} topupData.method - Payment method (manual, stripe, etc.)
+ * @returns {Promise<Object>} Top up result with transaction details
+ */
+export const topUpCredits = async (topupData) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/credits/topup`, {
+            method: 'POST',
+            headers: createHeaders(),
+            body: JSON.stringify(topupData)
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Configure auto top-up settings
+ * @param {Object} autoTopupSettings - Auto top-up configuration
+ * @param {boolean} autoTopupSettings.enabled - Enable/disable auto top-up
+ * @param {number} autoTopupSettings.threshold - Threshold amount to trigger auto top-up
+ * @param {number} autoTopupSettings.amount - Amount to top up when threshold is reached
+ * @returns {Promise<Object>} Updated balance and auto top-up settings
+ */
+export const configureAutoTopup = async (autoTopupSettings) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/credits/autotopup`, {
+            method: 'POST',
+            headers: createHeaders(),
+            body: JSON.stringify(autoTopupSettings)
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Get spending analytics
+ * @param {Object} params - Query parameters
+ * @param {number} params.days - Number of days to analyze (7, 30, etc.)
+ * @returns {Promise<Object>} Spending analytics
+ */
+export const getCreditSpending = async (params = {}) => {
+    try {
+        const queryParams = new URLSearchParams();
+        if (params.days) queryParams.append('days', params.days);
+
+        const url = `${API_BASE_URL}/api/credits/spend${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
 // Export API base URL for direct use if needed
 export { API_BASE_URL };
 
