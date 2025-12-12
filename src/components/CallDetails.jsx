@@ -79,7 +79,7 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg sm:text-xl font-semibold text-secondary-900 truncate">Call Details</h1>
                 <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                  {displayValue(campaign?.name)} • {displayValue(call?.id || call?._id)}
+                  {displayValue(campaign?.name)}{campaign?.tid && ` • TID: ${campaign.tid}`} • {displayValue(call?.id || call?._id)}
                 </p>
               </div>
             </div>
@@ -325,6 +325,12 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                   <p className="text-xs text-secondary-500">Name</p>
                   <p className="text-sm text-secondary-900 font-medium break-words">{displayValue(campaign?.name)}</p>
                 </div>
+                {campaign?.tid && (
+                  <div>
+                    <p className="text-xs text-secondary-500">TID</p>
+                    <p className="text-sm text-secondary-900">{campaign.tid}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-secondary-500">ID</p>
                   <p className="text-sm text-secondary-900 break-all">{displayValue(campaign?.id || campaign?._id)}</p>

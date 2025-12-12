@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Calendar, Clock, Target, TrendingUp, Phone, Users, CheckCircle, XCircle, AlertCircle, Edit2, Settings as SettingsIcon, X, Loader2, Plus, Trash2, Filter } from 'lucide-react'
-import { updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, updateCampaignStatus, getCallsByCampaignId } from '../api'
+import { updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, updateCampaignStatus, getCallsByCampaignId, getCallsByTID } from '../api'
 import RecordingPlayer from './RecordingPlayer'
 
 const CampaignDetails = ({ campaign, onBack, onHome }) => {
@@ -59,23 +59,49 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
       setCallsError('')
 
       try {
-        const result = await getCallsByCampaignId(campaignId, {
-          campaignType: campaignTypeFilter || undefined,
-          page: callsPagination.currentPage,
-          limit: callsPagination.limit
-        })
-
-        if (result && result.calls) {
-          setCalls(result.calls)
-          setCallsPagination(prev => ({
-            ...prev,
-            currentPage: result.currentPage || 1,
-            totalPages: result.totalPages || 1,
-            totalRecords: result.totalRecords || 0,
-            limit: result.limit || 20
-          }))
+        // If campaign has TIDs, fetch calls by those TIDs
+        if (campaign?.tids && campaign.tids.length > 0) {
+          const result = await getCallsByTID(
+            campaign.tids, // Array of TIDs
+            {
+              campaignType: campaignTypeFilter || undefined,
+              page: callsPagination.currentPage,
+              limit: callsPagination.limit
+            }
+          )
+          
+          if (result && result.calls) {
+            setCalls(result.calls)
+            setCallsPagination(prev => ({
+              ...prev,
+              currentPage: result.currentPage || 1,
+              totalPages: result.totalPages || 1,
+              totalRecords: result.totalRecords || 0,
+              limit: result.limit || 20
+            }))
+          } else {
+            setCalls([])
+          }
         } else {
-          setCalls([])
+          // Fallback: fetch calls by campaignId if no TIDs
+          const result = await getCallsByCampaignId(campaignId, {
+            campaignType: campaignTypeFilter || undefined,
+            page: callsPagination.currentPage,
+            limit: callsPagination.limit
+          })
+          
+          if (result && result.calls) {
+            setCalls(result.calls)
+            setCallsPagination(prev => ({
+              ...prev,
+              currentPage: result.currentPage || 1,
+              totalPages: result.totalPages || 1,
+              totalRecords: result.totalRecords || 0,
+              limit: result.limit || 20
+            }))
+          } else {
+            setCalls([])
+          }
         }
       } catch (error) {
         console.error('Error fetching calls:', error)
@@ -87,7 +113,7 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
     }
 
     fetchCalls()
-  }, [campaignId, campaignTypeFilter, callsPagination.currentPage])
+  }, [campaign, campaignId, campaignTypeFilter, callsPagination.currentPage])
 
   // Reset to page 1 when filter changes (using a separate effect to avoid dependency issues)
   useEffect(() => {
@@ -330,6 +356,16 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
                   <p className="text-xs text-secondary-500">
                     {isInbound ? 'Inbound' : 'Outbound'} Campaign Details
                   </p>
+                  {campaign.tids && campaign.tids.length > 0 && (
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      <span className="text-xs text-secondary-600">TID:</span>
+                      {campaign.tids.map((tid, index) => (
+                        <span key={index} className="text-xs font-medium text-secondary-700 bg-secondary-100 px-2 py-0.5 rounded">
+                          {tid}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -417,6 +453,18 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
                   <p className="text-xs text-secondary-500 mb-1">Campaign Name</p>
                   <p className="text-sm font-medium text-secondary-900">{campaign.name || 'N/A'}</p>
                 </div>
+                {campaign.tids && campaign.tids.length > 0 && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">TID(s)</p>
+                    <div className="flex flex-wrap gap-1">
+                      {campaign.tids.map((tid, index) => (
+                        <span key={index} className="text-sm font-medium text-secondary-900 bg-gray-100 px-2 py-1 rounded">
+                          {tid}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-secondary-500 mb-1">Category</p>
                   <p className="text-sm font-medium text-secondary-900">{campaign.category || 'N/A'}</p>

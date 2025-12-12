@@ -956,6 +956,9 @@ const DashboardOverview = ({ onBack, onHome, onCampaignClick }) => {
                               </div>
                               <div className="flex items-center space-x-4 text-xs text-secondary-500">
                                 <span className="truncate">{campaign.category}</span>
+                                {campaign.tid && (
+                                  <span>TID: {campaign.tid}</span>
+                                )}
                                 {campaign.startDate && campaign.endDate && (
                                   <span>
                                     {new Date(campaign.startDate).toLocaleDateString()} - {new Date(campaign.endDate).toLocaleDateString()}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, Clock, CheckCircle, TrendingUp, Plus, Pause, Play, Loader2, AlertCircle, Edit2, Settings, X, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, Clock, CheckCircle, TrendingUp, Plus, Pause, Play, Loader2, AlertCircle, Edit2, Settings, X, Search, Trash2, Filter as FilterIcon } from 'lucide-react'
 import { getCampaigns, updateCampaignStatus, updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, deleteCampaign } from '../api'
 
 const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack, onHome, onCreateCampaign, onToggleCampaignStatus }) => {
@@ -14,6 +14,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
     limit: 10
   })
   const [statusFilter, setStatusFilter] = useState('') // Status filter
+  const [tidFilter, setTidFilter] = useState('') // TID filter
   const [searchQuery, setSearchQuery] = useState('') // Search input value
   const [activeSearchQuery, setActiveSearchQuery] = useState('') // Active search query used for API calls
   const [updating, setUpdating] = useState(null) // Track which campaign is being updated
@@ -169,9 +170,14 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
           limit: pagination.limit
         }
 
-        // Add status filter if selected
+         // Add status filter if selected
         if (statusFilter) {
           params.status = statusFilter
+        }
+
+        // Add TID filter if provided
+        if (tidFilter.trim()) {
+          params.tid = tidFilter.trim()
         }
 
         // Add search query if provided (use active search query)
@@ -185,6 +191,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
           // Transform API campaign data to match component expectations
           let transformedCampaigns = result.campaigns.map(campaign => ({
             id: campaign._id,
+            tid: campaign.tids && campaign.tids.length > 0 ? campaign.tids[0] : null,
             name: campaign.name || 'N/A',
             status: campaign.status || 'N/A',
             createdDate: campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString() : 'N/A',
@@ -220,7 +227,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
 
     fetchCampaigns()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, apiType, pagination.currentPage, statusFilter, activeSearchQuery])
+  }, [type, apiType, pagination.currentPage, statusFilter, tidFilter, activeSearchQuery])
 
   // Update campaigns when propCampaigns changes (for external updates)
   // Only use propCampaigns if explicitly provided and not empty
@@ -645,6 +652,12 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-secondary-500">
                         <span className="truncate">ID: {campaign.id || 'N/A'}</span>
+                        {campaign.tid && (
+                          <>
+                            <span className="hidden sm:inline">•</span>
+                            <span className="truncate">TID: {campaign.tid}</span>
+                          </>
+                        )}
                         <span className="hidden sm:inline">•</span>
                         <span className="truncate">Created: {campaign.createdDateTime}</span>
                         {campaign.totalCalls !== null && (
@@ -1058,6 +1071,9 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                   <p className="text-sm font-medium text-secondary-900">Campaign Name:</p>
                   <p className="text-sm text-secondary-700">{campaignToDelete.name}</p>
                   <p className="text-xs text-secondary-500 mt-1">ID: {campaignToDelete.id || campaignToDelete._id}</p>
+                  {campaignToDelete.tid && (
+                    <p className="text-xs text-secondary-500">TID: {campaignToDelete.tid}</p>
+                  )}
                 </div>
               </div>
 

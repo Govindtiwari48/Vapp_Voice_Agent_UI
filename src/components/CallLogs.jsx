@@ -410,7 +410,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     ) : null}
                   </div>
                   <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                    {displayValue(campaign?.id || campaign?._id)} • {pagination.totalRecords > 0 ? `${pagination.totalRecords} call${pagination.totalRecords !== 1 ? 's' : ''}` : 'Loading calls...'}
+                    {displayValue(campaign?.id || campaign?._id)}{campaign?.tid && ` • TID: ${campaign.tid}`} • {pagination.totalRecords > 0 ? `${pagination.totalRecords} call${pagination.totalRecords !== 1 ? 's' : ''}` : 'Loading calls...'}
                   </p>
                 </div>
               </div>
@@ -467,6 +467,12 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                   <p className="text-xs text-secondary-500 mb-1">Campaign Name</p>
                   <p className="text-sm font-medium text-secondary-900">{campaign?.name || 'N/A'}</p>
                 </div>
+                {campaign?.tid && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">TID</p>
+                    <p className="text-sm font-medium text-secondary-900">{campaign.tid}</p>
+                  </div>
+                )}
                 {campaign?.category && (
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Category</p>

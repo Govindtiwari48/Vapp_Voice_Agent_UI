@@ -135,6 +135,7 @@ export const getTwimlTemplate = async () => {
  * @param {string} params.status - Filter by call status (ANSWERED, BUSY, NO ANSWER, etc.)
  * @param {string} params.campaignId - Filter by campaign ID
  * @param {string} params.campaignType - Filter by campaign type (inbound, outbound)
+ * @param {string} params.tid - Filter by TID (Twilio ID)
  * @returns {Promise<Object>} Paginated calls data
  */
 export const getCalls = async (params = {}) => {
@@ -148,6 +149,7 @@ export const getCalls = async (params = {}) => {
         if (params.status) queryParams.append('status', params.status);
         if (params.campaignId) queryParams.append('campaignId', params.campaignId);
         if (params.campaignType) queryParams.append('campaignType', params.campaignType);
+        if (params.tid) queryParams.append('tid', params.tid);
 
         const url = `${API_BASE_URL}/api/calls${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 
@@ -227,6 +229,42 @@ export const getCallsByCampaignId = async (campaignId, options = {}) => {
     if (options.campaignType) {
         params.campaignType = options.campaignType;
     }
+
+    return getCalls(params);
+};
+
+/**
+ * Get calls by TID
+ * @param {Array<string>|string} tid - TID(s) to filter by (single TID, TID array, or comma-separated string)
+ * @param {Object} options - Additional options
+ * @param {string} options.campaignType - Filter by campaign type (inbound, outbound)
+ * @param {number} options.page - Page number (default: 1)
+ * @param {number} options.limit - Records per page (default: 20)
+ * @param {string} options.startDate - Filter calls from this date (ISO format)
+ * @param {string} options.endDate - Filter calls up to this date (ISO format)
+ * @param {string} options.status - Filter by call status (ANSWERED, BUSY, NO ANSWER, etc.)
+ * @returns {Promise<Object>} Paginated calls data
+ */
+export const getCallsByTID = async (tid, options = {}) => {
+    const params = {
+        page: options.page || 1,
+        limit: options.limit || 20
+    };
+
+    // Handle multiple formats: string, array, or comma-separated string
+    if (tid) {
+        if (Array.isArray(tid)) {
+            params.tid = tid.join(',');
+        } else if (typeof tid === 'string') {
+            params.tid = tid;
+        }
+    }
+
+    // Add optional filters
+    if (options.campaignType) params.campaignType = options.campaignType;
+    if (options.startDate) params.startDate = options.startDate;
+    if (options.endDate) params.endDate = options.endDate;
+    if (options.status) params.status = options.status;
 
     return getCalls(params);
 };
@@ -545,6 +583,7 @@ export const getCampaigns = async (params = {}) => {
         }
         if (params.status) queryParams.append('status', params.status);
         if (params.search) queryParams.append('search', params.search);
+        if (params.tid) queryParams.append('tid', params.tid);
 
         const url = `${API_BASE_URL}/api/campaigns${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 
