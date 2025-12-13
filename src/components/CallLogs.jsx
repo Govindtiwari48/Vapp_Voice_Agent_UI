@@ -13,7 +13,6 @@ import {
   XCircle,
   Loader2,
   X,
-  Filter,
   TrendingUp,
   Users
 } from 'lucide-react'
@@ -42,7 +41,6 @@ const statusFilterOptions = [
 const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   const [activeFilter, setActiveFilter] = useState('today')
   const [statusFilter, setStatusFilter] = useState('') // Empty string means "All"
-  const [campaignTypeFilter, setCampaignTypeFilter] = useState('') // '' means all, 'inbound' or 'outbound'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [calls, setCalls] = useState([])
@@ -95,7 +93,6 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           result = await getCallsByTID(
             campaign.tids, // Array of TIDs
             {
-              campaignType: campaignTypeFilter || undefined,
               status: statusFilter || undefined,
               startDate: dateRange?.startDate,
               endDate: dateRange?.endDate,
@@ -106,7 +103,6 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
         } else {
           // Fallback: fetch calls by campaignId if no TIDs
           result = await getCallsByCampaignId(campaignId, {
-            campaignType: campaignTypeFilter || undefined,
             status: statusFilter || undefined,
             startDate: dateRange?.startDate,
             endDate: dateRange?.endDate,
@@ -138,7 +134,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
     fetchCalls()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId, campaign?.tids, activeFilter, statusFilter, campaignTypeFilter, pagination.currentPage, customDates.startDate, customDates.endDate])
+  }, [campaignId, campaign?.tids, activeFilter, statusFilter, pagination.currentPage, customDates.startDate, customDates.endDate])
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter)
@@ -153,22 +149,16 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     setPagination(prev => ({ ...prev, currentPage: 1 }))
   }
 
-  const handleCampaignTypeFilterChange = (type) => {
-    setCampaignTypeFilter(type)
-    setPagination(prev => ({ ...prev, currentPage: 1 }))
-  }
-
   const handleClearFilters = () => {
     setActiveFilter('today')
     setStatusFilter('')
-    setCampaignTypeFilter('')
     setCustomDates({ startDate: '', endDate: '' })
     setShowCustomDatePicker(false)
     setPagination(prev => ({ ...prev, currentPage: 1 }))
   }
 
   // Check if any filters are active
-  const hasActiveFilters = activeFilter !== 'today' || statusFilter !== '' || campaignTypeFilter !== ''
+  const hasActiveFilters = activeFilter !== 'today' || statusFilter !== ''
 
   // Get active filter label
   const getActiveFilterLabel = () => {
@@ -759,19 +749,6 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     label="Filter by Status"
                     className="flex-shrink-0"
                   />
-                  {/* Campaign Type Filter */}
-                  <div className="flex items-center space-x-2">
-                    <Filter className="w-4 h-4 text-secondary-500" />
-                    <select
-                      value={campaignTypeFilter}
-                      onChange={(e) => handleCampaignTypeFilterChange(e.target.value)}
-                      className="px-3 py-2 text-xs font-medium border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                    >
-                      <option value="">All Types</option>
-                      <option value="outbound">Outbound</option>
-                      <option value="inbound">Inbound</option>
-                    </select>
-                  </div>
                   {hasActiveFilters && (
                     <button
                       onClick={handleClearFilters}
