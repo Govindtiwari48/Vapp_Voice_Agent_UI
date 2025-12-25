@@ -9,6 +9,7 @@ import CampaignDetails from './components/CampaignDetails'
 import ProjectTraining from './components/ProjectTraining'
 import ApiDocs from './components/ApiDocs'
 import WalletTopUp from './components/WalletTopUp'
+import InstructionsForm from './components/InstructionsForm'
 import Login from './components/Login'
 import SessionWarning from './components/SessionWarning'
 import { isAuthenticated, getUser, clearAuth, updateLastActivity } from './api/auth'
@@ -25,7 +26,8 @@ import {
   Menu,
   X,
   LogOut,
-  RefreshCw
+  RefreshCw,
+  FileText
 } from 'lucide-react'
 
 function App() {
@@ -219,7 +221,7 @@ function App() {
     } else if (view === 'dashboardOverview') {
       // Reset all filters by incrementing the reset key
       setDashboardResetKey(prev => prev + 1)
-    } else if (['projectTraining', 'apiDocs', 'wallet'].includes(view)) {
+    } else if (['projectTraining', 'apiDocs', 'wallet', 'instructions'].includes(view)) {
       setView('dashboardOverview')
     }
   }
@@ -356,6 +358,15 @@ function App() {
         handleNavigateSection('wallet')
         setIsMobileMenuOpen(false)
       }
+    },
+    {
+      id: 'instructions',
+      label: 'Instructions',
+      icon: FileText,
+      action: () => {
+        handleNavigateSection('instructions')
+        setIsMobileMenuOpen(false)
+      }
     }
   ]
 
@@ -365,6 +376,7 @@ function App() {
     if (view === 'projectTraining') return 'projectTraining'
     if (view === 'apiDocs') return 'apiDocs'
     if (view === 'wallet') return 'wallet'
+    if (view === 'instructions') return 'instructions'
     if (view === 'campaigns' && selectedCampaignType === 'incoming') return 'inbound'
     if (view === 'campaigns' && selectedCampaignType === 'outgoing') return 'outbound'
     if (view === 'callLogs' && selectedCampaignType === 'incoming') return 'inbound'
@@ -554,6 +566,10 @@ function App() {
             onHome={handleHome} 
             onBalanceUpdate={loadBalanceData}
           />
+        )}
+
+        {view === 'instructions' && (
+          <InstructionsForm />
         )}
 
         {view === 'campaigns' && (

@@ -410,6 +410,106 @@ export const getAnalyticsSummary = async () => {
 };
 
 // ============================================================================
+// INSTRUCTIONS ENDPOINTS
+// ============================================================================
+
+/**
+ * Create new instructions
+ * @param {Object} instructionData - Instruction data
+ * @param {string} instructionData.greeting - Greeting message
+ * @param {string} instructionData.system - System prompt/instructions
+ * @param {boolean} instructionData.isActive - Whether the instruction is active
+ * @param {string} instructionData.version - Version number
+ * @returns {Promise<Object>} Created instruction data
+ */
+export const createInstructions = async (instructionData) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/instructions`, {
+            method: 'POST',
+            headers: createHeaders(),
+            body: JSON.stringify(instructionData)
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Get all instructions
+ * @returns {Promise<Object>} List of instructions
+ */
+export const getInstructions = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/instructions`, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Get instruction by ID
+ * @param {string} instructionId - Instruction ID
+ * @returns {Promise<Object>} Instruction data
+ */
+export const getInstructionById = async (instructionId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/instructions/${instructionId}`, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Update instruction
+ * @param {string} instructionId - Instruction ID
+ * @param {Object} updateData - Data to update
+ * @returns {Promise<Object>} Updated instruction data
+ */
+export const updateInstruction = async (instructionId, updateData) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/instructions/${instructionId}`, {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify(updateData)
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Delete instruction
+ * @param {string} instructionId - Instruction ID
+ * @returns {Promise<Object>} Deletion response
+ */
+export const deleteInstruction = async (instructionId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/instructions/${instructionId}`, {
+            method: 'DELETE',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+// ============================================================================
 // WEBHOOK ENDPOINTS (for reference, typically called by external services)
 // ============================================================================
 
