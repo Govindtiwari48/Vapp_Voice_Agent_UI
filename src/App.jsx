@@ -275,7 +275,7 @@ function App() {
     setView('createCampaign')
   }
 
-  const handleSaveCampaign = async (campaignData) => {
+  const handleSaveCampaign = async () => {
     // Campaign data already contains the ID from API response
     // The CreateCampaign component handles API call and passes the response data
     // Navigate back to campaigns list

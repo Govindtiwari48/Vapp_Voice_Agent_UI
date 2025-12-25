@@ -4,7 +4,7 @@ import {
   getActiveInstructions, 
   getInstructionsList,
   deleteInstruction,
-  deleteUserInstructions 
+  deleteUserInstructions
 } from '../api';
 
 const InstructionsManager = ({ onBack, onHome }) => {
@@ -14,6 +14,9 @@ const InstructionsManager = ({ onBack, onHome }) => {
   const [error, setError] = useState(null);
   
   // Form state
+  const [instructionId, setInstructionId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [instructionsExist, setInstructionsExist] = useState(false);
   const [formData, setFormData] = useState({
     greeting: '',
     system: '',
@@ -43,18 +46,22 @@ const InstructionsManager = ({ onBack, onHome }) => {
       const response = await getActiveInstructions();
       if (response.success && response.data) {
         setActiveInstruction(response.data);
-        // Pre-fill form with active instruction if it exists
-        if (response.data) {
-          setFormData({
-            greeting: response.data.greeting || '',
-            system: response.data.system || '',
-            isActive: response.data.isActive || true,
-            version: response.data.version || '1.0.0'
-          });
-        }
+        setInstructionsExist(true);
+        setInstructionId(response.data._id);
+        // Don't set to editing mode since we can't update through API
+        setIsEditing(false);
+        // Don't pre-fill form when instructions exist
+      } else {
+        // No active instruction exists
+        setInstructionsExist(false);
+        setIsEditing(false);
+        setInstructionId(null);
       }
     } catch (err) {
       console.error('Error fetching active instruction:', err);
+      setInstructionsExist(false);
+      setIsEditing(false);
+      setInstructionId(null);
     }
   };
 
@@ -86,13 +93,33 @@ const InstructionsManager = ({ onBack, onHome }) => {
     setLoading(true);
     setError(null);
 
+    // Debug: Log what we're trying to send
+    console.log('Sending instruction data:', formData);
+    console.log('API endpoint:', isEditing ? 'PUT /api/instructions/' + instructionId : 'POST /api/instructions');
+    console.log('Full URL:', isEditing ? `http://localhost:8081/api/instructions/${instructionId}` : 'http://localhost:8081/api/instructions');
+
     try {
+      // Since the server doesn't support PUT updates, we'll use DELETE + POST approach
+      if (instructionsExist) {
+        if (!window.confirm('Instructions already exist. Saving will replace the existing instructions. Continue?')) {
+          return;
+        }
+        
+        // Delete existing instructions first
+        console.log('Deleting existing instructions...');
+        await deleteUserInstructions();
+      }
+      
+      // Create new instructions
       await createInstructions(formData);
-      // Refresh active instruction
+      alert(instructionsExist ? 'Instructions replaced successfully!' : 'Instructions created successfully!');
+      
+      // Refresh active instruction and state
       await fetchActiveInstruction();
-      // Show success message
-      alert('Instructions created successfully!');
-      // Reset form
+      setIsEditing(false);
+      setInstructionId(null);
+      
+      // Reset form for new creation
       setFormData({
         greeting: '',
         system: '',
@@ -100,7 +127,15 @@ const InstructionsManager = ({ onBack, onHome }) => {
         version: '1.0.0'
       });
     } catch (err) {
-      setError(err.message || 'Failed to create instructions');
+      console.error('Save error details:', err);
+      console.error('Error response:', err.response);
+      
+      if (err.message?.includes('404')) {
+        setError('Server Error: Endpoint not found (404). Please check the API is running correctly.');
+      } else {
+        const detailedError = err.response?.rawResponse || err.message;
+        setError(`Failed to save instructions: ${detailedError}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -208,6 +243,7 @@ const InstructionsManager = ({ onBack, onHome }) => {
             loading={loading}
             error={error}
             activeInstruction={activeInstruction}
+            instructionsExist={instructionsExist}
           />
         ) : (
           <InstructionsList
@@ -226,21 +262,42 @@ const InstructionsManager = ({ onBack, onHome }) => {
 };
 
 // Create Instructions Form Component
-const InstructionsForm = ({ formData, onChange, onSubmit, loading, error, activeInstruction }) => (
-  <div className="bg-white rounded-lg shadow-md p-6">
-    <h2 className="text-xl font-semibold mb-4">Create New Instructions</h2>
+const InstructionsForm = ({ 
+  formData, 
+  onChange, 
+  onSubmit, 
+  loading, 
+  error, 
+  activeInstruction,
+  instructionsExist
+}) => (
+    <div className="bg-white rounded-lg shadow-md p-6">
+    <h2 className="text-xl font-semibold mb-4">{instructionsExist ? 'Replace Instructions' : 'Create New Instructions'}</h2>
     
     {error && (
       <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-        {error}
+        <p>{error}</p>
+        {error.includes('JSON') && (
+          <p className="mt-2 text-sm">
+            This usually means the server returned an error page instead of JSON. Check the browser's Network tab for the actual response.
+          </p>
+        )}
       </div>
     )}
 
-    {activeInstruction && (
+    {error && error.includes('already exist') && (
+      <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+        <p><strong>Instructions already exist!</strong></p>
+        <p className="mt-2">Saving will replace the existing instructions with new ones.</p>
+      </div>
+    )}
+
+    {instructionsExist && (
       <div className="mb-4 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded">
         <p className="font-medium">Current Active Instructions:</p>
         <p className="mt-2"><strong>Greeting:</strong> {activeInstruction.greeting}</p>
         <p className="mt-1"><strong>System:</strong> {activeInstruction.system}</p>
+        <p className="mt-2 text-sm">Note: Click "Replace Instructions" below to create new instructions (this will delete the current ones).</p>
       </div>
     )}
 
@@ -311,7 +368,7 @@ const InstructionsForm = ({ formData, onChange, onSubmit, loading, error, active
         disabled={loading}
         className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? 'Creating...' : 'Create Instructions'}
+        {loading ? 'Creating...' : instructionsExist ? 'Replace Instructions' : 'Create Instructions'}
       </button>
     </form>
   </div>
@@ -385,14 +442,17 @@ const InstructionsList = ({ instructions, pagination, loading, error, onDelete, 
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => onDelete(instruction._id)}
-                  className="ml-4 text-red-600 hover:text-red-900"
-                >
+                <div className="ml-4 flex space-x-2">
+                  <button
+                    onClick={() => onDelete(instruction._id)}
+                    className="text-red-600 hover:text-red-900"
+                    title="Delete Instruction"
+                  >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
+              </div>
               </div>
             </div>
           ))}

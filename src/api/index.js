@@ -34,7 +34,36 @@ const createHeaders = (additionalHeaders = {}) => {
  * @returns {Promise<Object>} Parsed response data
  */
 const handleResponse = async (response) => {
-    const data = await response.json();
+    let data;
+    
+    try {
+        data = await response.json();
+    } catch (jsonError) {
+        // If JSON parsing fails, try to get the raw text
+        try {
+            const textData = await response.text();
+            console.error('Failed to parse JSON response:', textData);
+            
+            if (!response.ok) {
+                const error = new Error(`Server error (${response.status}): Non-JSON response received. See console for details.`);
+                error.response = {
+                    status: response.status,
+                    data: textData,
+                    rawResponse: textData
+                };
+                throw error;
+            }
+            
+            throw new Error('Invalid JSON response from server');
+        } catch (textError) {
+            // If even text parsing fails (unlikely), throw a generic error
+            const error = new Error(`Server error (${response.status}): Unable to parse response`);
+            error.response = {
+                status: response.status
+            };
+            throw error;
+        }
+    }
 
     if (!response.ok) {
         // Create error with proper message from backend response structure
@@ -62,6 +91,13 @@ const handleError = (error) => {
     if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Network error: Unable to connect to the server. Please check if the backend is running.');
     }
+    
+    // Log the full error for debugging
+    console.error('API Error details:', error);
+    if (error.response) {
+        console.error('Response details:', error.response);
+    }
+    
     throw error;
 };
 
