@@ -509,6 +509,89 @@ export const deleteInstruction = async (instructionId) => {
     }
 };
 
+/**
+ * Get latest/active instruction set
+ * @returns {Promise<Object>} Active instruction data
+ */
+export const getActiveInstructions = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/instructions`, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Get all instruction sets with pagination
+ * @param {Object} params - Query parameters
+ * @param {number} params.page - Page number (default: 1)
+ * @param {number} params.limit - Records per page (default: 10)
+ * @returns {Promise<Object>} Paginated instructions data
+ */
+export const getInstructionsList = async (params = {}) => {
+    try {
+        const queryParams = new URLSearchParams();
+        if (params.page) queryParams.append('page', params.page);
+        if (params.limit) queryParams.append('limit', params.limit);
+
+        const url = `${API_BASE_URL}/api/instructions/list${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        const result = await handleResponse(response);
+
+        // Handle pagination format
+        if (result.success && result.data) {
+            return {
+                instructions: result.data.instructions || [],
+                pagination: {
+                    currentPage: result.data.pagination?.page || 1,
+                    totalPages: result.data.pagination?.totalPages || 1,
+                    totalRecords: result.data.pagination?.totalRecords || 0,
+                    limit: result.data.pagination?.limit || 10
+                }
+            };
+        }
+
+        return {
+            instructions: [],
+            pagination: {
+                currentPage: 1,
+                totalPages: 1,
+                totalRecords: 0,
+                limit: 10
+            }
+        };
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Delete user's instructions (bulk delete)
+ * @returns {Promise<Object>} Deletion response
+ */
+export const deleteUserInstructions = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/instructions`, {
+            method: 'DELETE',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
 // ============================================================================
 // WEBHOOK ENDPOINTS (for reference, typically called by external services)
 // ============================================================================

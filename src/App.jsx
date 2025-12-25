@@ -9,7 +9,7 @@ import CampaignDetails from './components/CampaignDetails'
 import ProjectTraining from './components/ProjectTraining'
 import ApiDocs from './components/ApiDocs'
 import WalletTopUp from './components/WalletTopUp'
-import InstructionsForm from './components/InstructionsForm'
+import InstructionsManager from './components/InstructionsManager'
 import Login from './components/Login'
 import SessionWarning from './components/SessionWarning'
 import { isAuthenticated, getUser, clearAuth, updateLastActivity } from './api/auth'
@@ -569,7 +569,10 @@ function App() {
         )}
 
         {view === 'instructions' && (
-          <InstructionsForm />
+          <InstructionsManager 
+            onBack={handleBack}
+            onHome={handleHome}
+          />
         )}
 
         {view === 'campaigns' && (
