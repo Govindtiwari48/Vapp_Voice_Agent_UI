@@ -8,7 +8,6 @@ import {
 } from '../api';
 
 const InstructionsManager = ({ onBack, onHome }) => {
-  const [activeTab, setActiveTab] = useState('create');
   const [instructions, setInstructions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -36,10 +35,8 @@ const InstructionsManager = ({ onBack, onHome }) => {
   // Fetch active instruction and list
   useEffect(() => {
     fetchActiveInstruction();
-    if (activeTab === 'list') {
-      fetchInstructionsList();
-    }
-  }, [activeTab]);
+    fetchInstructionsList();
+  }, []);
 
   const fetchActiveInstruction = async () => {
     try {
@@ -206,46 +203,20 @@ const InstructionsManager = ({ onBack, onHome }) => {
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('create')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'create'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Create Instructions
-              </button>
-              <button
-                onClick={() => setActiveTab('list')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'list'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                All Instructions ({pagination.totalRecords})
-              </button>
-            </nav>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'create' ? (
-          <InstructionsForm 
-            formData={formData}
-            onChange={handleFormChange}
-            onSubmit={handleSubmit}
-            loading={loading}
-            error={error}
-            activeInstruction={activeInstruction}
-            instructionsExist={instructionsExist}
-          />
-        ) : (
+        {/* Instructions Form */}
+        <InstructionsForm 
+          formData={formData}
+          onChange={handleFormChange}
+          onSubmit={handleSubmit}
+          loading={loading}
+          error={error}
+          activeInstruction={activeInstruction}
+          instructionsExist={instructionsExist}
+        />
+        
+        {/* Instructions List */}
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-4">All Instructions ({pagination.totalRecords})</h2>
           <InstructionsList
             instructions={instructions}
             pagination={pagination}
@@ -255,7 +226,7 @@ const InstructionsManager = ({ onBack, onHome }) => {
             onDeleteAll={handleDeleteAll}
             onPageChange={handlePageChange}
           />
-        )}
+        </div>
       </div>
     </div>
   );
