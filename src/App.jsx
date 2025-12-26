@@ -314,15 +314,15 @@ function App() {
         setIsMobileMenuOpen(false)
       }
     },
-    {
-      id: 'projectTraining',
-      label: 'Project Training',
-      icon: GraduationCap,
-      action: () => {
-        handleNavigateSection('projectTraining')
-        setIsMobileMenuOpen(false)
-      }
-    },
+    // {
+    //   id: 'projectTraining',
+    //   label: 'Project Training',
+    //   icon: GraduationCap,
+    //   action: () => {
+    //     handleNavigateSection('projectTraining')
+    //     setIsMobileMenuOpen(false)
+    //   }
+    // },
     {
       id: 'inbound',
       label: 'Inbound Campaigns',
