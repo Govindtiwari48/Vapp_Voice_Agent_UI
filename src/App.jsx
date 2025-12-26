@@ -12,6 +12,8 @@ import WalletTopUp from './components/WalletTopUp'
 import InstructionsManager from './components/InstructionsManager'
 import Login from './components/Login'
 import SessionWarning from './components/SessionWarning'
+import AIProjectIdModal from './components/AIProjectIdModal'
+import Profile from './components/Profile'
 import { isAuthenticated, getUser, clearAuth, updateLastActivity } from './api/auth'
 import { getCampaignById, getCreditBalance } from './api'
 import sessionManager from './utils/sessionManager'
@@ -27,7 +29,8 @@ import {
   X,
   LogOut,
   RefreshCw,
-  FileText
+  FileText,
+  User
 } from 'lucide-react'
 
 function App() {
@@ -45,6 +48,7 @@ function App() {
   const [dashboardResetKey, setDashboardResetKey] = useState(0)
   const [balanceData, setBalanceData] = useState(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
+  const [showAIProjectIdModal, setShowAIProjectIdModal] = useState(false)
 
   // Check authentication on mount and set up session management
   useEffect(() => {
@@ -64,6 +68,10 @@ function App() {
           })
           // Load balance data
           loadBalanceData()
+          // Check if user has AI Project ID and show modal if not
+          if (!userData.aiProjectId) {
+            setShowAIProjectIdModal(true)
+          }
         } else {
           clearAuth()
           setIsAuthenticatedState(false)
@@ -127,6 +135,10 @@ function App() {
       setWarningRemainingTime(remainingTime)
       setShowSessionWarning(true)
     })
+    // Check if user has AI Project ID and show modal if not
+    if (!userData.aiProjectId) {
+      setShowAIProjectIdModal(true)
+    }
   }
 
   // Handle logout
@@ -154,6 +166,17 @@ function App() {
   const handleWarningLogout = () => {
     setShowSessionWarning(false)
     handleLogout()
+  }
+
+  // Handle AI Project ID modal close
+  const handleCloseAIProjectModal = () => {
+    setShowAIProjectIdModal(false)
+  }
+
+  // Handle AI Project ID update success
+  const handleAIProjectSuccess = (updatedUser) => {
+    // Update user data with new AI Project ID
+    setUser(updatedUser)
   }
 
   const handleSelectCampaignType = (type) => {
@@ -367,6 +390,15 @@ function App() {
         handleNavigateSection('instructions')
         setIsMobileMenuOpen(false)
       }
+    },
+    {
+      id: 'profile',
+      label: 'Profile',
+      icon: User,
+      action: () => {
+        handleNavigateSection('profile')
+        setIsMobileMenuOpen(false)
+      }
     }
   ]
 
@@ -377,6 +409,7 @@ function App() {
     if (view === 'apiDocs') return 'apiDocs'
     if (view === 'wallet') return 'wallet'
     if (view === 'instructions') return 'instructions'
+    if (view === 'profile') return 'profile'
     if (view === 'campaigns' && selectedCampaignType === 'incoming') return 'inbound'
     if (view === 'campaigns' && selectedCampaignType === 'outgoing') return 'outbound'
     if (view === 'callLogs' && selectedCampaignType === 'incoming') return 'inbound'
@@ -487,25 +520,46 @@ function App() {
 
               {/* User Profile Section */}
               <div className="bg-secondary-50 rounded-lg p-3">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-secondary-900 truncate">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-xs text-secondary-600 truncate mt-0.5">{user.email}</p>
-                    <p className="text-xs text-secondary-500 truncate mt-0.5">{user.phone}</p>
-                    {user.lastLoginAt && (
-                      <p className="text-xs text-secondary-400 truncate mt-1">
-                        Last login: {new Date(user.lastLoginAt).toLocaleDateString()} {new Date(user.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-secondary-900 truncate">
+                        {user.firstName} {user.lastName}
                       </p>
-                    )}
+                      <p className="text-xs text-secondary-600 truncate mt-0.5">{user.email}</p>
+                      <p className="text-xs text-secondary-500 truncate mt-0.5">{user.phone}</p>
+                      {user.aiProjectId && (
+                        <p className="text-xs text-secondary-500 truncate mt-0.5 font-mono">AI: {user.aiProjectId}</p>
+                      )}
+                      {user.lastLoginAt && (
+                        <p className="text-xs text-secondary-400 truncate mt-1">
+                          Last login: {new Date(user.lastLoginAt).toLocaleDateString()} {new Date(user.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="ml-2 p-1.5 text-secondary-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                      title="Logout"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
                   </div>
+                  
+                  {!user.aiProjectId && (
+                    <button
+                      onClick={() => setShowAIProjectIdModal(true)}
+                      className="w-full bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-xs font-medium py-1.5 rounded transition-colors"
+                    >
+                      Set AI Project ID
+                    </button>
+                  )}
+                  
                   <button
-                    onClick={handleLogout}
-                    className="ml-2 p-1.5 text-secondary-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                    title="Logout"
+                    onClick={() => handleNavigateSection('profile')}
+                    className="w-full bg-primary-100 hover:bg-primary-200 text-primary-700 text-xs font-medium py-1.5 rounded transition-colors"
                   >
-                    <LogOut className="w-4 h-4" />
+                    View Profile
                   </button>
                 </div>
               </div>
@@ -575,6 +629,14 @@ function App() {
           />
         )}
 
+        {view === 'profile' && (
+          <Profile 
+            onBack={handleBack}
+            onHome={handleHome}
+            onProfileUpdate={handleAIProjectSuccess}
+          />
+        )}
+
         {view === 'campaigns' && (
           <CampaignList
             type={selectedCampaignType}
@@ -631,6 +693,13 @@ function App() {
         onExtend={handleExtendSession}
         onLogout={handleWarningLogout}
         remainingTime={warningRemainingTime}
+      />
+
+      {/* AI Project ID Modal */}
+      <AIProjectIdModal
+        isVisible={showAIProjectIdModal}
+        onClose={handleCloseAIProjectModal}
+        onSuccess={handleAIProjectSuccess}
       />
     </div>
   )

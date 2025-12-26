@@ -966,6 +966,56 @@ export const deleteCampaign = async (campaignId) => {
 };
 
 // ============================================================================
+// USER PROFILE ENDPOINTS
+// ============================================================================
+
+/**
+ * Get user profile
+ * @returns {Promise<Object>} User profile data
+ */
+export const getUserProfile = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Update user profile
+ * @param {Object} profileData - Profile data to update
+ * @param {string} profileData.aiProjectId - AI Project ID
+ * @returns {Promise<Object>} Updated user profile data
+ */
+export const updateUserProfile = async (profileData) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify(profileData)
+        });
+
+        return await handleResponse(response);
+    } catch (error) {
+        return handleError(error);
+    }
+};
+
+/**
+ * Update AI Project ID
+ * @param {string} aiProjectId - AI Project ID to set
+ * @returns {Promise<Object>} Updated user profile data
+ */
+export const updateAIProjectId = async (aiProjectId) => {
+    return updateUserProfile({ aiProjectId });
+};
+
+// ============================================================================
 // CREDITS/WALLET MANAGEMENT ENDPOINTS
 // ============================================================================
 
