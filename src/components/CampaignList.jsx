@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, Clock, CheckCircle, TrendingUp, Plus, Pause, Play, Loader2, AlertCircle, Edit2, Settings, X, Search, Trash2, Filter as FilterIcon } from 'lucide-react'
-import { getCampaigns, updateCampaignStatus, updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, deleteCampaign } from '../api'
+import { getCampaigns, updateCampaignStatus, updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, deleteCampaign, getCampaignExternalStatus } from '../api'
 
 const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack, onHome, onCreateCampaign, onToggleCampaignStatus }) => {
   const isIncoming = type === 'incoming'
@@ -189,20 +189,39 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
 
         if (result && result.campaigns) {
           // Transform API campaign data to match component expectations
-          let transformedCampaigns = result.campaigns.map(campaign => ({
-            id: campaign._id,
-            tid: campaign.tids && campaign.tids.length > 0 ? campaign.tids[0] : null,
-            name: campaign.name || 'N/A',
-            status: campaign.status || 'N/A',
-            createdDate: campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString() : 'N/A',
-            createdDateTime: campaign.createdAt ? formatDateTime(campaign.createdAt) : 'N/A',
-            // Use nullish coalescing to preserve 0 values, only use null for undefined/null
-            totalCalls: campaign.metrics?.totalCalls !== undefined && campaign.metrics?.totalCalls !== null ? campaign.metrics.totalCalls : null,
-            successfulCalls: campaign.metrics?.successfulCalls !== undefined && campaign.metrics?.successfulCalls !== null ? campaign.metrics.successfulCalls : null,
-            // Preserve 0 as valid value for avgDuration
-            avgDuration: campaign.metrics?.avgDuration !== undefined && campaign.metrics?.avgDuration !== null ? formatDuration(campaign.metrics.avgDuration) : null,
-            // Store full campaign data for details view
-            _fullData: campaign
+          let transformedCampaigns = await Promise.all(result.campaigns.map(async (campaign) => {
+            let externalStats = null
+            
+            // Fetch external status if campaign has TID
+            if (campaign.tids && campaign.tids.length > 0) {
+              try {
+                const externalStatus = await getCampaignExternalStatus(campaign.tids[0])
+                if (externalStatus.success) {
+                  externalStats = externalStatus.summary
+                }
+              } catch (error) {
+                console.error(`Error fetching external status for campaign ${campaign._id}:`, error)
+              }
+            }
+
+            return {
+              id: campaign._id,
+              tid: campaign.tids && campaign.tids.length > 0 ? campaign.tids[0] : null,
+              tids: campaign.tids || [],
+              name: campaign.name || 'N/A',
+              status: campaign.status || 'N/A',
+              createdDate: campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString() : 'N/A',
+              createdDateTime: campaign.createdAt ? formatDateTime(campaign.createdAt) : 'N/A',
+              // Use external stats if available, otherwise fallback to campaign metrics
+              totalCalls: externalStats?.total !== undefined ? externalStats.total : (campaign.metrics?.totalCalls !== undefined && campaign.metrics?.totalCalls !== null ? campaign.metrics.totalCalls : null),
+              successfulCalls: externalStats?.answered !== undefined ? externalStats.answered : (campaign.metrics?.successfulCalls !== undefined && campaign.metrics?.successfulCalls !== null ? campaign.metrics.successfulCalls : null),
+              // Preserve 0 as valid value for avgDuration
+              avgDuration: campaign.metrics?.avgDuration !== undefined && campaign.metrics?.avgDuration !== null ? formatDuration(campaign.metrics.avgDuration) : null,
+              // Store external stats
+              externalStats: externalStats,
+              // Store full campaign data for details view
+              _fullData: campaign
+            }
           }))
 
           // Apply professional fuzzy search if search query is provided
@@ -253,7 +272,8 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
   const handleToggleStatus = async (campaign, e) => {
     e.stopPropagation()
 
-    const campaignId = campaign.id || campaign._id
+    // Use TID if available, otherwise fallback to campaign ID
+    const campaignId = campaign.tid || campaign.id || campaign._id
     const currentStatus = campaign.status || campaign._fullData?.status
     const newStatus = currentStatus === 'active' ? 'paused' : 'active'
 
@@ -265,7 +285,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
       if (result.success) {
         // Update local state
         setCampaigns(prev => prev.map(c =>
-          (c.id === campaignId || c._id === campaignId)
+          (c.tid === campaignId || c.id === campaignId || c._id === campaignId)
             ? { ...c, status: newStatus, _fullData: { ...c._fullData, status: newStatus } }
             : c
         ))
@@ -296,7 +316,8 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
   const handleSaveEdit = async () => {
     if (!editingCampaign) return
 
-    const campaignId = editingCampaign._id || editingCampaign.id
+    // Use TID if available, otherwise fallback to campaign ID
+    const campaignId = (editingCampaign.tids && editingCampaign.tids.length > 0 ? editingCampaign.tids[0] : null) || editingCampaign._id || editingCampaign.id
     setUpdating(campaignId)
     setEditErrors({})
 
@@ -307,7 +328,8 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
         // Refresh campaigns list
         setCampaigns(prev => prev.map(c => {
           const cId = c.id || c._id
-          if (cId === campaignId) {
+          const cTid = c.tid
+          if (cId === editingCampaign._id || cId === editingCampaign.id || cTid === campaignId) {
             return {
               ...c,
               name: editForm.name,
@@ -373,7 +395,8 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
   const handleSaveSettings = async () => {
     if (!settingsCampaign) return
 
-    const campaignId = settingsCampaign._id || settingsCampaign.id
+    // Use TID if available, otherwise fallback to campaign ID
+    const campaignId = (settingsCampaign.tids && settingsCampaign.tids.length > 0 ? settingsCampaign.tids[0] : null) || settingsCampaign._id || settingsCampaign.id
     setUpdating(campaignId)
 
     try {
@@ -427,7 +450,8 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
   const handleConfirmDelete = async () => {
     if (!campaignToDelete) return
 
-    const campaignId = campaignToDelete.id || campaignToDelete._id
+    // Use TID if available, otherwise fallback to campaign ID
+    const campaignId = campaignToDelete.tid || campaignToDelete.id || campaignToDelete._id
     setDeleting(campaignId)
 
     try {
@@ -435,7 +459,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
 
       if (result.success) {
         // Remove campaign from local state
-        setCampaigns(prev => prev.filter(c => (c.id !== campaignId && c._id !== campaignId)))
+        setCampaigns(prev => prev.filter(c => (c.tid !== campaignId && c.id !== campaignId && c._id !== campaignId)))
         // Reset pagination if needed
         if (campaigns.length === 1 && pagination.currentPage > 1) {
           setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))
@@ -651,14 +675,12 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-secondary-500">
-                        <span className="truncate">ID: {campaign.id || 'N/A'}</span>
                         {campaign.tid && (
                           <>
-                            <span className="hidden sm:inline">•</span>
                             <span className="truncate">TID: {campaign.tid}</span>
+                            <span className="hidden sm:inline">•</span>
                           </>
                         )}
-                        <span className="hidden sm:inline">•</span>
                         <span className="truncate">Created: {campaign.createdDateTime}</span>
                         {campaign.totalCalls !== null && (
                           <>

@@ -35,7 +35,7 @@ const createHeaders = (additionalHeaders = {}) => {
  */
 const handleResponse = async (response) => {
     let data;
-    
+
     try {
         data = await response.json();
     } catch (jsonError) {
@@ -43,7 +43,7 @@ const handleResponse = async (response) => {
         try {
             const textData = await response.text();
             console.error('Failed to parse JSON response:', textData);
-            
+
             if (!response.ok) {
                 const error = new Error(`Server error (${response.status}): Non-JSON response received. See console for details.`);
                 error.response = {
@@ -53,7 +53,7 @@ const handleResponse = async (response) => {
                 };
                 throw error;
             }
-            
+
             throw new Error('Invalid JSON response from server');
         } catch (textError) {
             // If even text parsing fails (unlikely), throw a generic error
@@ -91,13 +91,13 @@ const handleError = (error) => {
     if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Network error: Unable to connect to the server. Please check if the backend is running.');
     }
-    
+
     // Log the full error for debugging
     console.error('API Error details:', error);
     if (error.response) {
         console.error('Response details:', error.response);
     }
-    
+
     throw error;
 };
 
@@ -851,8 +851,8 @@ export const getCampaigns = async (params = {}) => {
 };
 
 /**
- * Get campaign by ID
- * @param {string} campaignId - Campaign ID
+ * Get campaign by ID or TID
+ * @param {string} campaignId - Campaign ID or TID
  * @returns {Promise<Object>} Campaign data
  */
 export const getCampaignById = async (campaignId) => {
@@ -872,6 +872,49 @@ export const getCampaignById = async (campaignId) => {
         throw new Error('Campaign not found');
     } catch (error) {
         return handleError(error);
+    }
+};
+
+/**
+ * Get campaign external status by TID
+ * @param {string} tid - Campaign TID
+ * @returns {Promise<Object>} External status data with call summary
+ */
+export const getCampaignExternalStatus = async (tid) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/campaigns/external/${tid}`, {
+            method: 'GET',
+            headers: createHeaders()
+        });
+
+        const result = await handleResponse(response);
+
+        // Handle the API response format
+        if (result.success && result.data) {
+            return {
+                success: true,
+                data: result.data.data || [],
+                summary: result.summary || {},
+                externalApi: result.externalApi || {}
+            };
+        }
+
+        return {
+            success: false,
+            data: [],
+            summary: {},
+            externalApi: {}
+        };
+    } catch (error) {
+        console.error('Error fetching external status:', error);
+        // Return empty data instead of throwing error
+        return {
+            success: false,
+            data: [],
+            summary: {},
+            externalApi: {},
+            error: error.message
+        };
     }
 };
 

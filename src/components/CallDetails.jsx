@@ -333,7 +333,9 @@ const CallDetails = ({ call, campaign, type, onBack, onHome }) => {
                 )}
                 <div>
                   <p className="text-xs text-secondary-500">ID</p>
-                  <p className="text-sm text-secondary-900 break-all">{displayValue(campaign?.id || campaign?._id)}</p>
+                  <p className="text-sm text-secondary-900 break-all">
+                    {campaign?.tids && campaign.tids.length > 0 ? `TID: ${campaign.tids.join(', ')}` : displayValue(campaign?.id || campaign?._id)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-secondary-500">Type</p>

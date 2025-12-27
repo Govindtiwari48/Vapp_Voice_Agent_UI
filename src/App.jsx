@@ -186,11 +186,12 @@ function App() {
   }
 
   const handleSelectCampaign = async (campaign) => {
-    // If campaign has an ID, fetch full details from API
-    if (campaign && (campaign._id || campaign.id)) {
+    // If campaign has TID or ID, fetch full details from API
+    if (campaign && (campaign.tids?.length > 0 || campaign._id || campaign.id)) {
       try {
-        const campaignId = campaign._id || campaign.id
-        const campaignDetails = await getCampaignById(campaignId)
+        // Use TID if available, otherwise fallback to campaign ID
+        const identifier = (campaign.tids && campaign.tids.length > 0) ? campaign.tids[0] : (campaign._id || campaign.id)
+        const campaignDetails = await getCampaignById(identifier)
 
         if (campaignDetails) {
           setSelectedCampaign(campaignDetails)
@@ -267,11 +268,12 @@ function App() {
     // Set the campaign type and navigate to campaigns page
     setSelectedCampaignType(internalType)
 
-    // If campaign has an ID, fetch full details from API
-    if (campaign && (campaign._id || campaign.id)) {
+    // If campaign has TID or ID, fetch full details from API
+    if (campaign && (campaign.tids?.length > 0 || campaign._id || campaign.id)) {
       try {
-        const campaignId = campaign._id || campaign.id
-        const campaignDetails = await getCampaignById(campaignId)
+        // Use TID if available, otherwise fallback to campaign ID
+        const identifier = (campaign.tids && campaign.tids.length > 0) ? campaign.tids[0] : (campaign._id || campaign.id)
+        const campaignDetails = await getCampaignById(identifier)
 
         if (campaignDetails) {
           setSelectedCampaign(campaignDetails)

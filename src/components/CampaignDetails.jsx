@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Calendar, Clock, Target, TrendingUp, Phone, Users, CheckCircle, XCircle, AlertCircle, Edit2, Settings as SettingsIcon, X, Loader2, Plus, Trash2, Filter } from 'lucide-react'
-import { updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, updateCampaignStatus, getCallsByCampaignId, getCallsByTID } from '../api'
+import { updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, updateCampaignStatus, getCallsByCampaignId, getCallsByTID, getCampaignExternalStatus } from '../api'
 import RecordingPlayer from './RecordingPlayer'
 
 const CampaignDetails = ({ campaign, onBack, onHome }) => {
@@ -47,8 +47,37 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
     limit: 20
   })
 
+  // External status data state
+  const [externalStatus, setExternalStatus] = useState(null)
+  const [externalStatusLoading, setExternalStatusLoading] = useState(true)
+
   // Get campaign ID once for dependency
   const campaignId = campaign?._id || campaign?.id
+
+  // Fetch external status when campaign loads
+  useEffect(() => {
+    const fetchExternalStatus = async () => {
+      if (!campaign?.tids || campaign.tids.length === 0) {
+        setExternalStatusLoading(false)
+        return
+      }
+
+      setExternalStatusLoading(true)
+
+      try {
+        const result = await getCampaignExternalStatus(campaign.tids[0])
+        if (result.success) {
+          setExternalStatus(result)
+        }
+      } catch (error) {
+        console.error('Error fetching external status:', error)
+      } finally {
+        setExternalStatusLoading(false)
+      }
+    }
+
+    fetchExternalStatus()
+  }, [campaign])
 
   // Fetch calls when campaign loads or filter/pagination changes
   useEffect(() => {
@@ -139,6 +168,12 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
   const voiceSettings = settings.voiceSettings || {}
   const workingHours = settings.workingHours || {}
 
+  // Use external status stats if available, otherwise fallback to campaign metrics
+  const totalCalls = externalStatus?.summary?.total !== undefined ? externalStatus.summary.total : metrics.totalCalls
+  const successfulCalls = externalStatus?.summary?.answered !== undefined ? externalStatus.summary.answered : metrics.successfulCalls
+  const busyCalls = externalStatus?.summary?.busy !== undefined ? externalStatus.summary.busy : 0
+  const nullCalls = externalStatus?.summary?.null !== undefined ? externalStatus.summary.null : 0
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
     const date = new Date(dateString)
@@ -190,10 +225,10 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
   }
 
   // Calculate success rate - 0 is a valid value, only null/undefined means N/A
-  const successRate = (metrics.totalCalls !== undefined && metrics.totalCalls !== null &&
-    metrics.successfulCalls !== undefined && metrics.successfulCalls !== null)
-    ? (metrics.totalCalls > 0
-      ? Math.round((metrics.successfulCalls / metrics.totalCalls) * 100)
+  const successRate = (totalCalls !== undefined && totalCalls !== null &&
+    successfulCalls !== undefined && successfulCalls !== null)
+    ? (totalCalls > 0
+      ? Math.round((successfulCalls / totalCalls) * 100)
       : 0) // If totalCalls is 0, success rate is 0%
     : null
 
@@ -213,7 +248,8 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
     setSuccess('')
 
     try {
-      const campaignId = campaign._id || campaign.id
+      // Use TID if available, otherwise fallback to campaign ID
+      const campaignId = (campaign.tids && campaign.tids.length > 0 ? campaign.tids[0] : null) || campaign._id || campaign.id
       const result = await updateCampaignBasicInfo(campaignId, editForm)
 
       if (result.success) {
@@ -241,7 +277,8 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
     setSuccess('')
 
     try {
-      const campaignId = campaign._id || campaign.id
+      // Use TID if available, otherwise fallback to campaign ID
+      const campaignId = (campaign.tids && campaign.tids.length > 0 ? campaign.tids[0] : null) || campaign._id || campaign.id
       const settingsData = {
         callTimeout: parseInt(settingsForm.callTimeout) || 30,
       }
@@ -302,7 +339,8 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
     setSuccess('')
 
     try {
-      const campaignId = campaign._id || campaign.id
+      // Use TID if available, otherwise fallback to campaign ID
+      const campaignId = (campaign.tids && campaign.tids.length > 0 ? campaign.tids[0] : null) || campaign._id || campaign.id
       const result = await updateCampaignPhoneNumbers(campaignId, phoneNumbers)
 
       if (result.success) {
@@ -407,7 +445,7 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
               <Phone className="w-4 h-4 text-primary-600" />
             </div>
             <p className="text-2xl font-bold text-secondary-900">
-              {metrics.totalCalls !== undefined && metrics.totalCalls !== null ? metrics.totalCalls : 'N/A'}
+              {totalCalls !== undefined && totalCalls !== null ? totalCalls : 'N/A'}
             </p>
           </div>
 
@@ -417,7 +455,7 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
               <CheckCircle className="w-4 h-4 text-green-600" />
             </div>
             <p className="text-2xl font-bold text-green-600">
-              {metrics.successfulCalls !== undefined && metrics.successfulCalls !== null ? metrics.successfulCalls : 'N/A'}
+              {successfulCalls !== undefined && successfulCalls !== null ? successfulCalls : 'N/A'}
             </p>
           </div>
 
@@ -794,15 +832,31 @@ const CampaignDetails = ({ campaign, onBack, onHome }) => {
                 <div>
                   <p className="text-xs text-secondary-500 mb-1">Total Calls</p>
                   <p className="text-2xl font-bold text-secondary-900">
-                    {metrics.totalCalls !== undefined && metrics.totalCalls !== null ? metrics.totalCalls : 'N/A'}
+                    {totalCalls !== undefined && totalCalls !== null ? totalCalls : 'N/A'}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-secondary-500 mb-1">Successful Calls</p>
                   <p className="text-xl font-semibold text-green-600">
-                    {metrics.successfulCalls !== undefined && metrics.successfulCalls !== null ? metrics.successfulCalls : 'N/A'}
+                    {successfulCalls !== undefined && successfulCalls !== null ? successfulCalls : 'N/A'}
                   </p>
                 </div>
+                {busyCalls > 0 && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Busy Calls</p>
+                    <p className="text-xl font-semibold text-yellow-600">
+                      {busyCalls}
+                    </p>
+                  </div>
+                )}
+                {nullCalls > 0 && (
+                  <div>
+                    <p className="text-xs text-secondary-500 mb-1">Pending Calls</p>
+                    <p className="text-xl font-semibold text-secondary-600">
+                      {nullCalls}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-secondary-500 mb-1">Failed Calls</p>
                   <p className="text-xl font-semibold text-red-600">

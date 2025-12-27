@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Home, Save, X, PhoneIncoming, PhoneOutgoing, Info, Upload, FileText, CheckCircle, AlertCircle, Download } from 'lucide-react'
+import { ArrowLeft, Home, Save, X, PhoneIncoming, PhoneOutgoing, Phone, Info, Upload, FileText, CheckCircle, AlertCircle, Download } from 'lucide-react'
 import { createCampaign } from '../api'
 
 const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
@@ -43,6 +43,8 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
   const [csvError, setCsvError] = useState('')
   const [csvFileName, setCsvFileName] = useState('')
   const [popupError, setPopupError] = useState(null)
+  const [manualPhoneNumbers, setManualPhoneNumbers] = useState('') // Manual phone number input
+  const [manualPhoneNumbersError, setManualPhoneNumbersError] = useState('')
 
   const categories = [
     'Real Estate',
@@ -134,101 +136,157 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
   }
 
   const handleCsvUpload = (e) => {
-    const file = e.target.files[0]
+    try {
+      if (!e || !e.target) {
+        console.error('Invalid event object in handleCsvUpload')
+        return
+      }
 
-    if (!file) {
-      return
-    }
+      const file = e.target.files?.[0]
 
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setCsvError('Please upload a CSV file (.csv format)')
-      setCsvFile(null)
-      setCsvFileName('')
-      setPhoneNumbers([])
-      setOriginalPhoneNumbers([])
-      return
-    }
+      if (!file) {
+        return
+      }
 
-    setCsvFileName(file.name)
-    setCsvError('')
-    setCsvFile(file)
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
-
-        if (lines.length === 0) {
-          setCsvError('CSV file is empty')
-          setPhoneNumbers([])
-          setOriginalPhoneNumbers([])
-          return
-        }
-
-        // Check if first line looks like a header
-        const firstLine = lines[0]
-        const cleanedFirstLine = firstLine.replace(/[^\d+]/g, '')
-        if (!/^\+?[1-9]\d{1,14}$/.test(cleanedFirstLine)) {
-          setCsvError('CSV file should not have a header row. First line should contain a phone number.')
-          setPhoneNumbers([])
-          setOriginalPhoneNumbers([])
-          return
-        }
-
-        // Validate all lines are phone numbers
-        const validNumbers = []
-        const originalNumbers = [] // Store original numbers without country code
-        const invalidLines = []
-
-        lines.forEach((line, index) => {
-          // Clean the line: remove all non-digit characters except +
-          const cleaned = line.replace(/[^\d+]/g, '')
-          if (validatePhoneNumber(cleaned)) {
-            // Store original number (remove + if present, keep only digits)
-            const originalNumber = cleaned.replace(/^\+/, '')
-            originalNumbers.push(originalNumber)
-
-            // Format with + if not present and starts with country code (for campaign API)
-            const formatted = cleaned.startsWith('+') ? cleaned : (cleaned.length === 10 ? `+91${cleaned}` : `+${cleaned}`)
-            validNumbers.push(formatted)
-          } else {
-            invalidLines.push(index + 1)
-          }
-        })
-
-        if (invalidLines.length > 0) {
-          setCsvError(`Invalid phone numbers found on lines: ${invalidLines.join(', ')}. Each line must contain a valid phone number.`)
-          setPhoneNumbers([])
-          setOriginalPhoneNumbers([])
-          return
-        }
-
-        if (validNumbers.length === 0) {
-          setCsvError('No valid phone numbers found in the CSV file')
-          setPhoneNumbers([])
-          setOriginalPhoneNumbers([])
-          return
-        }
-
-        setPhoneNumbers(validNumbers)
-        setOriginalPhoneNumbers(originalNumbers) // Store original numbers
-        setCsvError('')
-      } catch (error) {
-        console.error('Error parsing CSV:', error)
-        setCsvError('Error reading CSV file. Please check the file format.')
+      if (!file.name || !file.name.toLowerCase().endsWith('.csv')) {
+        setCsvError('Please upload a CSV file (.csv format)')
+        setCsvFile(null)
+        setCsvFileName('')
         setPhoneNumbers([])
         setOriginalPhoneNumbers([])
+        return
       }
-    }
 
-    reader.onerror = () => {
-      setCsvError('Error reading file. Please try again.')
+      setCsvFileName(file.name)
+      setCsvError('')
+      setCsvFile(file)
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        try {
+          const text = event.target?.result
+          if (!text || typeof text !== 'string') {
+            setCsvError('Error reading file content')
+            setPhoneNumbers([])
+            setOriginalPhoneNumbers([])
+            return
+          }
+
+          const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+
+          if (lines.length === 0) {
+            setCsvError('CSV file is empty')
+            setPhoneNumbers([])
+            setOriginalPhoneNumbers([])
+            return
+          }
+
+          // Check if first line looks like a header
+          const firstLine = lines[0]
+          if (!firstLine) {
+            setCsvError('CSV file format is invalid')
+            setPhoneNumbers([])
+            setOriginalPhoneNumbers([])
+            return
+          }
+
+          const cleanedFirstLine = firstLine.replace(/[^\d+]/g, '')
+          if (!/^\+?[1-9]\d{1,14}$/.test(cleanedFirstLine)) {
+            setCsvError('CSV file should not have a header row. First line should contain a phone number.')
+            setPhoneNumbers([])
+            setOriginalPhoneNumbers([])
+            return
+          }
+
+          // Validate all lines are phone numbers
+          const validNumbers = []
+          const originalNumbers = [] // Store original numbers without country code
+          const invalidLines = []
+
+          lines.forEach((line, index) => {
+            try {
+              // Clean the line: remove all non-digit characters except +
+              const cleaned = line.replace(/[^\d+]/g, '')
+              if (cleaned && validatePhoneNumber(cleaned)) {
+                // Store original number (remove + if present, keep only digits)
+                const originalNumber = cleaned.replace(/^\+/, '')
+                if (originalNumber && !originalNumbers.includes(originalNumber)) {
+                  originalNumbers.push(originalNumber)
+                }
+
+                // Format with + if not present and starts with country code (for campaign API)
+                const formatted = cleaned.startsWith('+') ? cleaned : (cleaned.length === 10 ? `+91${cleaned}` : `+${cleaned}`)
+                if (formatted && !validNumbers.includes(formatted)) {
+                  validNumbers.push(formatted)
+                }
+              } else {
+                invalidLines.push(index + 1)
+              }
+            } catch (lineError) {
+              console.error('Error processing line:', line, lineError)
+              invalidLines.push(index + 1)
+            }
+          })
+
+          if (invalidLines.length > 0) {
+            setCsvError(`Invalid phone numbers found on lines: ${invalidLines.join(', ')}. Each line must contain a valid phone number.`)
+            setPhoneNumbers([])
+            setOriginalPhoneNumbers([])
+            return
+          }
+
+          if (validNumbers.length === 0) {
+            setCsvError('No valid phone numbers found in the CSV file')
+            setPhoneNumbers([])
+            setOriginalPhoneNumbers([])
+            return
+          }
+
+          setPhoneNumbers(validNumbers)
+          setOriginalPhoneNumbers(originalNumbers) // Store original numbers
+          setCsvError('')
+        } catch (error) {
+          console.error('Error parsing CSV:', error)
+          setCsvError('Error reading CSV file. Please check the file format.')
+          setPhoneNumbers([])
+          setOriginalPhoneNumbers([])
+        }
+      }
+
+      reader.onerror = () => {
+        setCsvError('Error reading file. Please try again.')
+        setPhoneNumbers([])
+        setOriginalPhoneNumbers([])
+        setCsvFile(null)
+        setCsvFileName('')
+      }
+
+      reader.onabort = () => {
+        setCsvError('File reading was aborted. Please try again.')
+        setPhoneNumbers([])
+        setOriginalPhoneNumbers([])
+        setCsvFile(null)
+        setCsvFileName('')
+      }
+
+      try {
+        reader.readAsText(file)
+      } catch (readError) {
+        console.error('Error reading file:', readError)
+        setCsvError('Error reading file. Please try again.')
+        setPhoneNumbers([])
+        setOriginalPhoneNumbers([])
+        setCsvFile(null)
+        setCsvFileName('')
+      }
+    } catch (error) {
+      console.error('Error in handleCsvUpload:', error)
+      setCsvError('Error uploading file. Please try again.')
       setPhoneNumbers([])
       setOriginalPhoneNumbers([])
+      setCsvFile(null)
+      setCsvFileName('')
     }
-
-    reader.readAsText(file)
   }
 
   const handleRemoveCsv = () => {
@@ -301,8 +359,10 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
         }
       }
 
-      if (phoneNumbers.length === 0) {
-        newErrors.phoneNumbers = 'Please upload a CSV file with phone numbers'
+      // Check if either CSV file has phone numbers OR manual input has phone numbers
+      const hasManualNumbers = manualPhoneNumbers && typeof manualPhoneNumbers === 'string' && manualPhoneNumbers.trim().length > 0
+      if (phoneNumbers.length === 0 && !hasManualNumbers) {
+        newErrors.phoneNumbers = 'Please upload a CSV file with phone numbers or enter phone numbers manually'
       }
 
       if (formData.settings.maxCalls && (isNaN(formData.settings.maxCalls) || formData.settings.maxCalls < 1)) {
@@ -328,6 +388,44 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
     setIsSubmitting(true)
 
     try {
+      // Merge phone numbers from CSV and manual input
+      let allPhoneNumbers = [...phoneNumbers]
+      let allOriginalNumbers = [...originalPhoneNumbers]
+
+      // Process manual phone numbers if provided
+      if (manualPhoneNumbers && typeof manualPhoneNumbers === 'string' && manualPhoneNumbers.trim().length > 0) {
+        try {
+          const manualLines = manualPhoneNumbers.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+          
+          manualLines.forEach(line => {
+            try {
+              const cleaned = line.replace(/[^\d+]/g, '')
+              if (cleaned && validatePhoneNumber(cleaned)) {
+                // Store original number (remove + if present, keep only digits)
+                const originalNumber = cleaned.replace(/^\+/, '')
+                if (originalNumber && !allOriginalNumbers.includes(originalNumber)) {
+                  allOriginalNumbers.push(originalNumber)
+                }
+
+                // Format with + if not present and starts with country code (for campaign API)
+                const formatted = cleaned.startsWith('+') ? cleaned : (cleaned.length === 10 ? `+91${cleaned}` : `+${cleaned}`)
+                if (formatted && !allPhoneNumbers.includes(formatted)) {
+                  allPhoneNumbers.push(formatted)
+                }
+              }
+            } catch (lineError) {
+              console.error('Error processing phone number line:', line, lineError)
+              // Continue processing other lines
+            }
+          })
+        } catch (error) {
+          console.error('Error processing manual phone numbers:', error)
+          setErrors({ submit: 'Error processing manual phone numbers. Please check the format.' })
+          setIsSubmitting(false)
+          return
+        }
+      }
+
       // Prepare campaign data according to API structure
       const campaignPayload = {
         name: formData.name,
@@ -355,7 +453,7 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
 
         campaignPayload.startDate = startDate.toISOString()
         campaignPayload.endDate = endDate.toISOString()
-        campaignPayload.phoneNumbers = phoneNumbers.map(num => num.startsWith('+') ? num : `+${num}`)
+        campaignPayload.phoneNumbers = allPhoneNumbers.map(num => num.startsWith('+') ? num : `+${num}`)
 
         // Add outbound settings
         if (formData.settings.maxCalls) {
@@ -382,10 +480,10 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
         const campaignId = response.data._id || response.data.id
 
         // Call datapush API for outbound campaigns with phone numbers
-        if (!isIncoming && originalPhoneNumbers.length > 0) {
+        if (!isIncoming && allOriginalNumbers.length > 0) {
           try {
-            // Use original phone numbers from CSV (without country code) and join with comma and space
-            const formattedPhoneNumbers = originalPhoneNumbers.join(', ')
+            // Use original phone numbers (without country code) and join with comma and space
+            const formattedPhoneNumbers = allOriginalNumbers.join(', ')
 
             // Build the datapush API URL
             const datapushUrl = new URL('http://180.150.249.216/webapi/datapush')
@@ -722,6 +820,81 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
                       <div className="flex items-start space-x-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">
                         <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                         <span>{errors.phoneNumbers}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Manual Phone Number Input */}
+                <div className="mt-6 pt-6 border-t border-secondary-200">
+                  <label htmlFor="manualPhoneNumbers" className="block text-sm font-medium text-secondary-700 mb-2">
+                    Or Enter Phone Numbers Manually
+                  </label>
+                  
+                  <div className="space-y-3">
+                    <textarea
+                      id="manualPhoneNumbers"
+                      value={manualPhoneNumbers || ''}
+                      onChange={(e) => {
+                        try {
+                          if (!e || !e.target) {
+                            console.error('Invalid event object in manual phone number input')
+                            return
+                          }
+                          const value = e.target?.value || ''
+                          setManualPhoneNumbers(value)
+                          setManualPhoneNumbersError('')
+                        } catch (error) {
+                          console.error('Error in manual phone number input:', error)
+                          setManualPhoneNumbersError('Error processing input')
+                        }
+                      }}
+                      rows={6}
+                      className="w-full px-3 py-2 border border-secondary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+                      placeholder="Enter phone numbers, one per line&#10;Example:&#10;9876543210&#10;9876543211&#10;+919876543212"
+                    />
+                    
+                    {/* Info Box */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                      <div className="flex items-start space-x-2">
+                        <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-blue-800">
+                          <p className="font-medium mb-1">Manual Input Instructions:</p>
+                          <ul className="list-disc list-inside space-y-1 text-blue-700">
+                            <li>Enter one phone number per line</li>
+                            <li>Press Enter to add a new line for the next number</li>
+                            <li>Phone numbers can be with or without country code</li>
+                            <li>Numbers from both CSV and manual input will be merged</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Success Message for Manual Input */}
+                    {manualPhoneNumbers && typeof manualPhoneNumbers === 'string' && manualPhoneNumbers.trim().length > 0 && !manualPhoneNumbersError && (
+                      <div className="flex items-center space-x-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>
+                          {manualPhoneNumbers.split('\n').filter(line => line && line.trim().length > 0).length} phone number(s) entered manually
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Combined Total */}
+                    {(phoneNumbers.length > 0 || (manualPhoneNumbers && typeof manualPhoneNumbers === 'string' && manualPhoneNumbers.trim().length > 0)) && (
+                      <div className="flex items-center space-x-2 text-sm text-primary-700 bg-primary-50 border border-primary-200 rounded-md p-3">
+                        <Phone className="w-4 h-4" />
+                        <span className="font-medium">
+                          Total: {phoneNumbers.length + (manualPhoneNumbers ? manualPhoneNumbers.split('\n').filter(line => line && line.trim().length > 0).length : 0)} phone number(s) will be added to the campaign
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Error Message for Manual Input */}
+                    {manualPhoneNumbersError && (
+                      <div className="flex items-start space-x-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">
+                        <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span>{manualPhoneNumbersError}</span>
                       </div>
                     )}
                   </div>

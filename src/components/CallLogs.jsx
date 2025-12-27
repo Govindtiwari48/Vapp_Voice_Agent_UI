@@ -16,7 +16,7 @@ import {
   TrendingUp,
   Users
 } from 'lucide-react'
-import { getCallsByCampaignId, getCallsByTID, formatStartDateForAPI, formatEndDateForAPI, getDateRange } from '../api'
+import { getCallsByCampaignId, getCallsByTID, formatStartDateForAPI, formatEndDateForAPI, getDateRange, getCampaignExternalStatus } from '../api'
 import StatusFilter from './StatusFilter'
 import RecordingPlayer from './RecordingPlayer'
 
@@ -56,9 +56,85 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     startDate: '',
     endDate: ''
   })
+  const [externalMetrics, setExternalMetrics] = useState(null)
+  const [loadingMetrics, setLoadingMetrics] = useState(false)
 
   // Get campaign ID
   const campaignId = campaign?._id || campaign?.id
+
+  // Fetch external metrics when campaign changes
+  useEffect(() => {
+    const fetchExternalMetrics = async () => {
+      // Get TID from campaign - use first TID if available
+      const tid = campaign?.tids && campaign.tids.length > 0 ? campaign.tids[0] : null
+
+      if (!tid) {
+        setExternalMetrics(null)
+        return
+      }
+
+      setLoadingMetrics(true)
+      try {
+        const result = await getCampaignExternalStatus(tid)
+
+        if (result.success && result.data) {
+          // Calculate metrics from external API data
+          const callData = result.data.data || []
+          const summary = result.summary || {}
+
+          // Calculate total calls
+          const totalCalls = summary.total || callData.length || 0
+
+          // Calculate successful calls (answered)
+          const successfulCalls = summary.answered || callData.filter(call =>
+            call.status && call.status.toLowerCase() === 'answered'
+          ).length || 0
+
+          // Calculate average duration
+          let avgDuration = null
+          if (callData.length > 0) {
+            const durations = callData
+              .filter(call => call.answer_time && call.hangup_time)
+              .map(call => {
+                const answerTime = new Date(call.answer_time)
+                const hangupTime = new Date(call.hangup_time)
+                return (hangupTime - answerTime) / 1000 // Duration in seconds
+              })
+              .filter(duration => duration > 0)
+
+            if (durations.length > 0) {
+              const totalSeconds = durations.reduce((sum, d) => sum + d, 0)
+              const avgSeconds = Math.round(totalSeconds / durations.length)
+              const mins = Math.floor(avgSeconds / 60)
+              const secs = avgSeconds % 60
+              avgDuration = `${mins}:${String(secs).padStart(2, '0')}`
+            }
+          }
+
+          // Calculate success rate
+          const successRate = totalCalls > 0 ? Math.round((successfulCalls / totalCalls) * 100) : 0
+
+          setExternalMetrics({
+            totalCalls,
+            successfulCalls,
+            avgDuration,
+            successRate,
+            summary,
+            callData
+          })
+        } else {
+          setExternalMetrics(null)
+        }
+      } catch (error) {
+        console.error('Error fetching external metrics:', error)
+        setExternalMetrics(null)
+      } finally {
+        setLoadingMetrics(false)
+      }
+    }
+
+    fetchExternalMetrics()
+  }, [campaign?.tids])
 
   // Fetch calls when campaign, filters, or pagination changes
   useEffect(() => {
@@ -298,42 +374,34 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     }
   }
 
-  // Helper function to format duration from seconds to MM:SS
-  const formatDuration = (seconds) => {
-    if (seconds === null || seconds === undefined) return null
-    if (seconds === 0 || seconds === '0') return '0:00'
-    // If already formatted (string with :), return as is
-    if (typeof seconds === 'string' && seconds.includes(':')) return seconds
-    // Convert seconds to MM:SS
-    const numSeconds = typeof seconds === 'number' ? seconds : parseInt(seconds, 10)
-    if (isNaN(numSeconds)) return null
-    const mins = Math.floor(numSeconds / 60)
-    const secs = numSeconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
 
-  // Helper functions to get campaign metrics from either structure
-  // Campaign-by-id API returns: campaign.metrics.totalCalls
-  // Transformed data from list: campaign.totalCalls
+  // Helper functions to get campaign metrics from external API
   const getTotalCalls = () => {
-    const value = campaign?.totalCalls ?? campaign?.metrics?.totalCalls
-    return value !== null && value !== undefined ? value : null
+    if (externalMetrics) {
+      return externalMetrics.totalCalls
+    }
+    return null
   }
 
   const getSuccessfulCalls = () => {
-    const value = campaign?.successfulCalls ?? campaign?.metrics?.successfulCalls
-    return value !== null && value !== undefined ? value : null
+    if (externalMetrics) {
+      return externalMetrics.successfulCalls
+    }
+    return null
   }
 
   const getAvgDuration = () => {
-    // Check if already formatted (from transformed list data)
-    const directValue = campaign?.avgDuration
-    if (directValue !== null && directValue !== undefined) {
-      return directValue
+    if (externalMetrics && externalMetrics.avgDuration) {
+      return externalMetrics.avgDuration
     }
-    // Otherwise, format from metrics (from campaign-by-id API)
-    const secondsValue = campaign?.metrics?.avgDuration
-    return formatDuration(secondsValue)
+    return null
+  }
+
+  const getSuccessRate = () => {
+    if (externalMetrics) {
+      return externalMetrics.successRate
+    }
+    return null
   }
 
   // Helper function to display value or NA (but show 0 if value is 0)
@@ -343,12 +411,11 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
     return value
   }
 
-  // Calculate success rate
+  // Get metrics from external API
   const totalCalls = getTotalCalls()
   const successfulCalls = getSuccessfulCalls()
-  const formattedSuccessRate = totalCalls !== null && totalCalls !== undefined
-    ? (totalCalls === 0 ? 0 : (successfulCalls !== null && successfulCalls !== undefined ? Math.round((successfulCalls / totalCalls) * 100) : null))
-    : null
+  const avgDuration = getAvgDuration()
+  const successRate = getSuccessRate()
 
   const formatCurrency = (value) => {
     if (typeof value !== 'number') return '—'
@@ -364,18 +431,10 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
 
   // Get campaign details from API response
   const isInbound = campaign?.campaignType === 'inbound' || type === 'incoming'
-  const metrics = campaign?.metrics || {}
   const settings = campaign?.settings || {}
   const voiceSettings = settings?.voiceSettings || {}
   const workingHours = settings?.workingHours || {}
   const phoneNumbers = campaign?.phoneNumbers || []
-  const callsByStatus = metrics?.callsByStatus || {}
-
-  // Calculate additional metrics
-  const failedCalls = metrics?.failedCalls !== undefined && metrics?.failedCalls !== null ? metrics.failedCalls : null
-  const conversionRate = metrics?.conversionRate !== undefined && metrics?.conversionRate !== null ? metrics.conversionRate : null
-  const costPerCall = metrics?.costPerCall !== undefined && metrics?.costPerCall !== null ? metrics.costPerCall : null
-  const revenue = metrics?.revenue !== undefined && metrics?.revenue !== null ? metrics.revenue : null
 
   return (
     <div className="min-h-screen bg-secondary-50">
@@ -418,7 +477,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                     ) : null}
                   </div>
                   <p className="text-xs text-secondary-500 mt-0.5 truncate">
-                    {displayValue(campaign?.id || campaign?._id)}{campaign?.tids && campaign.tids.length > 0 && ` • TID: ${campaign.tids.join(', ')}`} • {pagination.totalRecords > 0 ? `${pagination.totalRecords} call${pagination.totalRecords !== 1 ? 's' : ''}` : 'Loading calls...'}
+                    {campaign?.tids && campaign.tids.length > 0 ? `TID: ${campaign.tids.join(', ')}` : displayValue(campaign?.id || campaign?._id)} • {pagination.totalRecords > 0 ? `${pagination.totalRecords} call${pagination.totalRecords !== 1 ? 's' : ''}` : (loadingMetrics ? 'Loading metrics...' : 'Loading calls...')}
                   </p>
                 </div>
               </div>
@@ -430,38 +489,48 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-secondary-500">Total Calls</p>
-              <Phone className="w-4 h-4 text-primary-600" />
-            </div>
-            <p className="text-xl sm:text-2xl font-bold text-secondary-900">{displayValue(getTotalCalls())}</p>
+        {!loadingMetrics && (totalCalls !== null || successfulCalls !== null || avgDuration !== null || successRate !== null) && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            {totalCalls !== null && (
+              <div className="card p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-secondary-500">Total Calls</p>
+                  <Phone className="w-4 h-4 text-primary-600" />
+                </div>
+                <p className="text-xl sm:text-2xl font-bold text-secondary-900">{displayValue(totalCalls)}</p>
+              </div>
+            )}
+            {successfulCalls !== null && (
+              <div className="card p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-secondary-500">Successful</p>
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                </div>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{displayValue(successfulCalls)}</p>
+              </div>
+            )}
+            {avgDuration !== null && (
+              <div className="card p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-secondary-500">Avg Duration</p>
+                  <Clock className="w-4 h-4 text-primary-600" />
+                </div>
+                <p className="text-xl sm:text-2xl font-bold text-secondary-900">{displayValue(avgDuration)}</p>
+              </div>
+            )}
+            {successRate !== null && (
+              <div className="card p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-secondary-500">Success Rate</p>
+                  <TrendingUp className="w-4 h-4 text-primary-600" />
+                </div>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">
+                  {successRate !== null ? `${successRate}%` : 'NA'}
+                </p>
+              </div>
+            )}
           </div>
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-secondary-500">Successful</p>
-              <CheckCircle className="w-4 h-4 text-green-600" />
-            </div>
-            <p className="text-xl sm:text-2xl font-bold text-green-600">{displayValue(getSuccessfulCalls())}</p>
-          </div>
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-secondary-500">Avg Duration</p>
-              <Clock className="w-4 h-4 text-primary-600" />
-            </div>
-            <p className="text-xl sm:text-2xl font-bold text-secondary-900">{displayValue(getAvgDuration())}</p>
-          </div>
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-secondary-500">Success Rate</p>
-              <TrendingUp className="w-4 h-4 text-primary-600" />
-            </div>
-            <p className="text-xl sm:text-2xl font-bold text-blue-600">
-              {formattedSuccessRate !== null ? `${formattedSuccessRate}%` : 'NA'}
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* Campaign Details Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -475,18 +544,6 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                   <p className="text-xs text-secondary-500 mb-1">Campaign Name</p>
                   <p className="text-sm font-medium text-secondary-900">{campaign?.name || 'N/A'}</p>
                 </div>
-                {campaign?.tids && campaign.tids.length > 0 && (
-                  <div>
-                    <p className="text-xs text-secondary-500 mb-1">TID(s)</p>
-                    <div className="flex flex-wrap gap-1">
-                      {campaign.tids.map((tid, index) => (
-                        <span key={index} className="text-sm font-medium text-secondary-900 bg-gray-100 px-2 py-1 rounded">
-                          {tid}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 {campaign?.category && (
                   <div>
                     <p className="text-xs text-secondary-500 mb-1">Category</p>
@@ -529,18 +586,6 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
                       <p className="text-xs text-secondary-500 mb-1">End Date</p>
                       <p className="text-sm font-medium text-secondary-900">{formatDate(campaign.endDate)}</p>
                     </div>
-                  </div>
-                )}
-                {campaign?.createdAt && (
-                  <div>
-                    <p className="text-xs text-secondary-500 mb-1">Created At</p>
-                    <p className="text-sm font-medium text-secondary-900">{formatDate(campaign.createdAt)}</p>
-                  </div>
-                )}
-                {campaign?.createdBy && (
-                  <div>
-                    <p className="text-xs text-secondary-500 mb-1">Created By</p>
-                    <p className="text-sm font-medium text-secondary-900">{campaign.createdBy}</p>
                   </div>
                 )}
               </div>
@@ -627,86 +672,72 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
           </div>
 
           {/* Right Column - Performance Metrics */}
-          <div className="space-y-6">
-            <div className="card p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-secondary-900 mb-4">Performance Metrics</h3>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-secondary-500 mb-1">Total Calls</p>
-                  <p className="text-2xl font-bold text-secondary-900">
-                    {metrics?.totalCalls !== undefined && metrics?.totalCalls !== null ? metrics.totalCalls : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-secondary-500 mb-1">Successful Calls</p>
-                  <p className="text-xl font-semibold text-green-600">
-                    {metrics?.successfulCalls !== undefined && metrics?.successfulCalls !== null ? metrics.successfulCalls : 'N/A'}
-                  </p>
-                </div>
-                {failedCalls !== null && (
-                  <div>
-                    <p className="text-xs text-secondary-500 mb-1">Failed Calls</p>
-                    <p className="text-xl font-semibold text-red-600">{failedCalls}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs text-secondary-500 mb-1">Success Rate</p>
-                  <p className="text-2xl font-bold text-primary-600">
-                    {formattedSuccessRate !== null ? `${formattedSuccessRate}%` : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-secondary-500 mb-1">Avg Duration</p>
-                  <p className="text-lg font-semibold text-secondary-900">
-                    {displayValue(getAvgDuration())}
-                  </p>
-                </div>
-                {conversionRate !== null && (
-                  <div>
-                    <p className="text-xs text-secondary-500 mb-1">Conversion Rate</p>
-                    <p className="text-lg font-semibold text-secondary-900">{conversionRate}%</p>
-                  </div>
-                )}
-                {costPerCall !== null && (
-                  <div>
-                    <p className="text-xs text-secondary-500 mb-1">Cost Per Call</p>
-                    <p className="text-lg font-semibold text-secondary-900">₹ {costPerCall}</p>
-                  </div>
-                )}
-                {revenue !== null && (
-                  <div>
-                    <p className="text-xs text-secondary-500 mb-1">Revenue</p>
-                    <p className="text-lg font-semibold text-secondary-900">₹ {revenue}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Call Status Breakdown */}
-            {Object.keys(callsByStatus).length > 0 && (
+          {!loadingMetrics && externalMetrics && (
+            <div className="space-y-6">
               <div className="card p-5 sm:p-6">
-                <h3 className="text-lg font-semibold text-secondary-900 mb-4">Call Status</h3>
-                <div className="space-y-3">
-                  {Object.entries(callsByStatus).map(([status, count]) => {
-                    const statusColors = {
-                      ANSWERED: 'text-green-600',
-                      BUSY: 'text-yellow-600',
-                      NO_ANSWER: 'text-orange-600',
-                      FAILED: 'text-red-600'
-                    }
-                    return (
-                      <div key={status} className="flex items-center justify-between border-b border-secondary-100 pb-2">
-                        <span className="text-sm text-secondary-600">{status}</span>
-                        <span className={`text-sm font-semibold ${statusColors[status] || 'text-secondary-900'}`}>
-                          {count !== undefined && count !== null ? count : 'N/A'}
+                <h3 className="text-lg font-semibold text-secondary-900 mb-4">Performance Metrics</h3>
+                <div className="space-y-4">
+                  {totalCalls !== null && (
+                    <div>
+                      <p className="text-xs text-secondary-500 mb-1">Total Calls</p>
+                      <p className="text-2xl font-bold text-secondary-900">{totalCalls}</p>
+                    </div>
+                  )}
+                  {successfulCalls !== null && (
+                    <div>
+                      <p className="text-xs text-secondary-500 mb-1">Successful Calls</p>
+                      <p className="text-xl font-semibold text-green-600">{successfulCalls}</p>
+                    </div>
+                  )}
+                  {successRate !== null && (
+                    <div>
+                      <p className="text-xs text-secondary-500 mb-1">Success Rate</p>
+                      <p className="text-2xl font-bold text-primary-600">{successRate}%</p>
+                    </div>
+                  )}
+                  {avgDuration !== null && (
+                    <div>
+                      <p className="text-xs text-secondary-500 mb-1">Avg Duration</p>
+                      <p className="text-lg font-semibold text-secondary-900">{avgDuration}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Call Status Breakdown */}
+              {externalMetrics.summary && Object.keys(externalMetrics.summary).length > 0 && (
+                <div className="card p-5 sm:p-6">
+                  <h3 className="text-lg font-semibold text-secondary-900 mb-4">Call Status</h3>
+                  <div className="space-y-3">
+                    {externalMetrics.summary.answered !== undefined && externalMetrics.summary.answered !== null && (
+                      <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                        <span className="text-sm text-secondary-600">Answered</span>
+                        <span className="text-sm font-semibold text-green-600">
+                          {externalMetrics.summary.answered}
                         </span>
                       </div>
-                    )
-                  })}
+                    )}
+                    {externalMetrics.summary.busy !== undefined && externalMetrics.summary.busy !== null && (
+                      <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                        <span className="text-sm text-secondary-600">Busy</span>
+                        <span className="text-sm font-semibold text-yellow-600">
+                          {externalMetrics.summary.busy}
+                        </span>
+                      </div>
+                    )}
+                    {externalMetrics.summary.null !== undefined && externalMetrics.summary.null !== null && externalMetrics.summary.null > 0 && (
+                      <div className="flex items-center justify-between border-b border-secondary-100 pb-2">
+                        <span className="text-sm text-secondary-600">No Answer</span>
+                        <span className="text-sm font-semibold text-orange-600">
+                          {externalMetrics.summary.null}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Allocated DID Number Card */}
