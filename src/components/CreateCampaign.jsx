@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, Home, Save, X, PhoneIncoming, PhoneOutgoing, Info, Upload, FileText, CheckCircle, AlertCircle, Download } from 'lucide-react'
 import { createCampaign } from '../api'
 
-const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
+const CreateCampaign = ({ type, onBack, onHome, onSave, user }) => {
   const isIncoming = type === 'incoming'
   const campaignType = isIncoming ? 'inbound' : 'outbound'
 
@@ -393,7 +393,12 @@ const CreateCampaign = ({ type, onBack, onHome, onSave }) => {
             datapushUrl.searchParams.append('password', '123@123')
             datapushUrl.searchParams.append('phonenumber', formattedPhoneNumbers)
             datapushUrl.searchParams.append('callerid', 'fixed')
-            datapushUrl.searchParams.append('voiceid', '5628')
+            // Use voiceId from user profile or default to '5628'
+            datapushUrl.searchParams.append('voiceid', user?.voiceId || '5628')
+            // Include aiProjectId if available in user profile
+            if (user?.aiProjectId) {
+              datapushUrl.searchParams.append('aiprojectid', user.aiProjectId)
+            }
 
             // Call the datapush API
             const datapushResponse = await fetch(datapushUrl.toString(), {
