@@ -313,6 +313,88 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   // Transform calls for display
   const displayCalls = calls.map(transformCallData)
 
+  // Calculate average duration from call log data
+  const calculateAvgDurationFromCalls = () => {
+    if (!calls || calls.length === 0) return null
+
+    // Helper function to convert duration to seconds
+    const durationToSeconds = (duration) => {
+      if (duration === null || duration === undefined) return null
+
+      // If it's already a number, assume it's in seconds
+      if (typeof duration === 'number') {
+        return duration > 0 ? duration : null
+      }
+
+      // If it's a string in "MM:SS" format
+      if (typeof duration === 'string' && duration.includes(':')) {
+        const parts = duration.split(':')
+        if (parts.length === 2) {
+          const mins = parseInt(parts[0], 10)
+          const secs = parseInt(parts[1], 10)
+          if (!isNaN(mins) && !isNaN(secs)) {
+            return mins * 60 + secs
+          }
+        }
+        return null
+      }
+
+      // Try to parse as number
+      const numSeconds = parseInt(duration, 10)
+      if (!isNaN(numSeconds) && numSeconds > 0) {
+        return numSeconds
+      }
+
+      return null
+    }
+
+    // Calculate duration from start and end times if available
+    const getDurationFromTimestamps = (call) => {
+      if (call.start && call.end) {
+        try {
+          const startTime = new Date(call.start)
+          const endTime = new Date(call.end)
+          if (!isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
+            const diffSeconds = Math.floor((endTime - startTime) / 1000)
+            return diffSeconds > 0 ? diffSeconds : null
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+      return null
+    }
+
+    // Collect all valid durations
+    const durations = calls
+      .map(call => {
+        // First try to get duration from call.duration field
+        let duration = durationToSeconds(call.duration)
+
+        // If not available, try to calculate from start/end timestamps
+        if (!duration) {
+          duration = getDurationFromTimestamps(call)
+        }
+
+        return duration
+      })
+      .filter(d => d !== null && d > 0)
+
+    if (durations.length === 0) return null
+
+    // Calculate average
+    const totalSeconds = durations.reduce((sum, d) => sum + d, 0)
+    const avgSeconds = Math.round(totalSeconds / durations.length)
+
+    // Format as MM:SS
+    const mins = Math.floor(avgSeconds / 60)
+    const secs = avgSeconds % 60
+    return `${mins}:${String(secs).padStart(2, '0')}`
+  }
+
+  // Get average duration from call log data
+  const avgDurationFromCalls = calculateAvgDurationFromCalls()
+
   // Normalize status to handle both API format (ANSWERED) and legacy format (completed)
   const normalizeStatus = (status) => {
     if (!status) return ''
@@ -391,6 +473,11 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
   }
 
   const getAvgDuration = () => {
+    // Prioritize average duration calculated from call log data
+    if (avgDurationFromCalls) {
+      return avgDurationFromCalls
+    }
+    // Fallback to external metrics if available
     if (externalMetrics && externalMetrics.avgDuration) {
       return externalMetrics.avgDuration
     }
@@ -489,7 +576,7 @@ const CallLogs = ({ campaign, type, onSelectCall, onBack, onHome }) => {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Summary Cards */}
-        {!loadingMetrics && (totalCalls !== null || successfulCalls !== null || avgDuration !== null || successRate !== null) && (
+        {(!loadingMetrics || avgDurationFromCalls !== null) && (totalCalls !== null || successfulCalls !== null || avgDuration !== null || successRate !== null) && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
             {totalCalls !== null && (
               <div className="card p-3 sm:p-4">

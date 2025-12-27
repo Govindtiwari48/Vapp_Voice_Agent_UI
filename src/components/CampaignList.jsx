@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, Clock, CheckCircle, TrendingUp, Plus, Pause, Play, Loader2, AlertCircle, Edit2, Settings, X, Search, Trash2, Filter as FilterIcon } from 'lucide-react'
+import { ArrowLeft, Home, PhoneIncoming, PhoneOutgoing, Phone, CheckCircle, TrendingUp, Plus, Pause, Play, Loader2, AlertCircle, Edit2, Settings, X, Search, Trash2, Filter as FilterIcon } from 'lucide-react'
 import { getCampaigns, updateCampaignStatus, updateCampaignBasicInfo, updateCampaignSettings, updateCampaignPhoneNumbers, deleteCampaign, getCampaignExternalStatus } from '../api'
 
 const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack, onHome, onCreateCampaign, onToggleCampaignStatus }) => {
@@ -753,7 +753,7 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                   </div>
 
                   <div
-                    className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 cursor-pointer"
+                    className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 cursor-pointer"
                     onClick={() => handleCampaignClick(campaign)}
                   >
                     <div className="bg-secondary-50 rounded-lg p-3">
@@ -783,16 +783,6 @@ const CampaignList = ({ type, campaigns: propCampaigns, onSelectCampaign, onBack
                       </div>
                       <p className="text-base sm:text-lg font-semibold text-blue-600">
                         {successRate !== null ? `${successRate}%` : 'N/A'}
-                      </p>
-                    </div>
-
-                    <div className="bg-secondary-50 rounded-lg p-3">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <Clock className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                        <p className="text-xs text-secondary-500 truncate">Avg Duration</p>
-                      </div>
-                      <p className="text-base sm:text-lg font-semibold text-purple-600">
-                        {campaign.avgDuration !== null ? campaign.avgDuration : 'N/A'}
                       </p>
                     </div>
                   </div>
