@@ -657,6 +657,7 @@ function App() {
             onBack={handleBack}
             onHome={handleHome}
             onSave={handleSaveCampaign}
+            user={user}
           />
         )}
 
