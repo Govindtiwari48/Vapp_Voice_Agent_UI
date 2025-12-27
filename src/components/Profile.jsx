@@ -11,6 +11,8 @@ function Profile({ onBack, onProfileUpdate }) {
   const [editMode, setEditMode] = useState(false)
   const [aiProjectId, setAiProjectId] = useState('')
   const [originalAiProjectId, setOriginalAiProjectId] = useState('')
+  const [voiceId, setVoiceId] = useState('')
+  const [originalVoiceId, setOriginalVoiceId] = useState('')
 
   useEffect(() => {
     loadUserProfile()
@@ -25,6 +27,8 @@ function Profile({ onBack, onProfileUpdate }) {
         setUserData(response.user)
         setAiProjectId(response.user.aiProjectId || '')
         setOriginalAiProjectId(response.user.aiProjectId || '')
+        setVoiceId(response.user.voiceId || '')
+        setOriginalVoiceId(response.user.voiceId || '')
       }
     } catch (err) {
       setError(err.message || 'Failed to load profile')
@@ -42,31 +46,50 @@ function Profile({ onBack, onProfileUpdate }) {
   const handleCancel = () => {
     setEditMode(false)
     setAiProjectId(originalAiProjectId)
+    setVoiceId(originalVoiceId)
     setError('')
     setSuccess('')
   }
 
   const handleSave = async () => {
     try {
-      if (!aiProjectId.trim()) {
-        setError('AI Project ID cannot be empty')
-        return
+      // Prepare update payload - only include fields that have changed or are being set
+      const updatePayload = {}
+      
+      // Only add aiProjectId to payload if it has changed or is being set/updated
+      if (aiProjectId !== originalAiProjectId) {
+        if (!aiProjectId.trim()) {
+          setError('AI Project ID cannot be empty')
+          return
+        }
+        // Basic validation for email format
+        if (!aiProjectId.includes('@') || !aiProjectId.includes('.com')) {
+          setError('Please enter a valid AI Project ID (e.g., your_project_id@openai.com)')
+          return
+        }
+        updatePayload.aiProjectId = aiProjectId
       }
-
-      // Basic validation for email format
-      if (!aiProjectId.includes('@') || !aiProjectId.includes('.com')) {
-        setError('Please enter a valid AI Project ID (e.g., your_project_id@openai.com)')
+      
+      // Only add voiceId to payload if it has changed or is being set/updated
+      if (voiceId !== originalVoiceId) {
+        updatePayload.voiceId = voiceId
+      }
+      
+      // If nothing has changed, just exit edit mode
+      if (Object.keys(updatePayload).length === 0) {
+        setEditMode(false)
         return
       }
 
       setSaving(true)
       setError('')
       
-      const response = await updateUserProfile({ aiProjectId })
+      const response = await updateUserProfile(updatePayload)
       
       if (response.user) {
         setUserData(response.user)
-        setOriginalAiProjectId(response.user.aiProjectId)
+        setOriginalAiProjectId(response.user.aiProjectId || '')
+        setOriginalVoiceId(response.user.voiceId || '')
         setEditMode(false)
         setSuccess('Profile updated successfully!')
         
@@ -227,6 +250,44 @@ function Profile({ onBack, onProfileUpdate }) {
                   ) : (
                     <p className="text-secondary-500 text-base italic">
                       No AI Project ID configured
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Voice ID */}
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <Settings className="w-4 h-4 text-secondary-500" />
+                <label className="block text-sm font-medium text-secondary-700">Voice ID</label>
+                {userData.voiceId && !editMode && (
+                  <Check className="w-4 h-4 text-green-600" />
+                )}
+              </div>
+              
+              {editMode ? (
+                <div>
+                  <input
+                    type="text"
+                    value={voiceId}
+                    onChange={(e) => setVoiceId(e.target.value)}
+                    placeholder="Enter your Voice ID"
+                    className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <p className="text-secondary-500 text-xs mt-2">
+                    Optional: Enter your custom Voice ID for voice-related features
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  {userData.voiceId ? (
+                    <p className="text-secondary-900 text-base font-mono">
+                      {userData.voiceId}
+                    </p>
+                  ) : (
+                    <p className="text-secondary-500 text-base italic">
+                      No Voice ID configured
                     </p>
                   )}
                 </div>
