@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Edit2, Check, X, Settings, Save, User, Link, Copy, Check as CheckIcon, AlertCircle, Info } from 'lucide-react'
+import { ArrowLeft, Edit2, Check, X, Settings, Save, User, Link, Copy, Check as CheckIcon, AlertCircle, Info, Eye, EyeOff } from 'lucide-react'
 import { getUserProfile, updateUserProfile } from '../api/index'
 
 function Profile({ onBack, onProfileUpdate }) {
@@ -13,6 +13,11 @@ function Profile({ onBack, onProfileUpdate }) {
   const [originalAiProjectId, setOriginalAiProjectId] = useState('')
   const [voiceId, setVoiceId] = useState('')
   const [originalVoiceId, setOriginalVoiceId] = useState('')
+  const [apiUsername, setApiUsername] = useState('')
+  const [originalApiUsername, setOriginalApiUsername] = useState('')
+  const [apiPassword, setApiPassword] = useState('')
+  const [originalApiPassword, setOriginalApiPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -30,6 +35,10 @@ function Profile({ onBack, onProfileUpdate }) {
         setOriginalAiProjectId(response.user.aiProjectId || '')
         setVoiceId(response.user.voiceId || '')
         setOriginalVoiceId(response.user.voiceId || '')
+        setApiUsername(response.user.apiUsername || '')
+        setOriginalApiUsername(response.user.apiUsername || '')
+        setApiPassword(response.user.apiPassword || '')
+        setOriginalApiPassword(response.user.apiPassword || '')
       }
     } catch (err) {
       setError(err.message || 'Failed to load profile')
@@ -47,7 +56,9 @@ function Profile({ onBack, onProfileUpdate }) {
   const copyApiUrl = async () => {
     // Build URL with only actual database values
     const voiceIdValue = userData?.voiceId || userData?.voice_id || '5628'
-    const apiUrl = `http://180.150.249.216/webapi/datapush?username=testapi1@api.com&password=123@123&phonenumber=PHONE_NUMBERS&callerid=fixed&voiceid=${voiceIdValue}`
+    const username = userData?.apiUsername || 'testapi1@api.com'
+    const password = userData?.apiPassword || '123@123'
+    const apiUrl = `http://180.150.249.216/webapi/datapush?username=${username}&password=${password}&phonenumber=PHONE_NUMBERS&callerid=fixed&voiceid=${voiceIdValue}`
     try {
       await navigator.clipboard.writeText(apiUrl)
       setCopied(true)
@@ -61,6 +72,8 @@ function Profile({ onBack, onProfileUpdate }) {
     setEditMode(false)
     setAiProjectId(originalAiProjectId)
     setVoiceId(originalVoiceId)
+    setApiUsername(originalApiUsername)
+    setApiPassword(originalApiPassword)
     setError('')
     setSuccess('')
   }
@@ -90,6 +103,16 @@ function Profile({ onBack, onProfileUpdate }) {
         updatePayload.voiceId = voiceId
       }
       
+      // Only add apiUsername to payload if it has changed
+      if (apiUsername !== originalApiUsername) {
+        updatePayload.apiUsername = apiUsername
+      }
+      
+      // Only add apiPassword to payload if it has changed
+      if (apiPassword !== originalApiPassword) {
+        updatePayload.apiPassword = apiPassword
+      }
+      
       // If nothing has changed, just exit edit mode
       if (Object.keys(updatePayload).length === 0) {
         setEditMode(false)
@@ -105,6 +128,8 @@ function Profile({ onBack, onProfileUpdate }) {
         setUserData(response.user)
         setOriginalAiProjectId(response.user.aiProjectId || '')
         setOriginalVoiceId(response.user.voiceId || '')
+        setOriginalApiUsername(response.user.apiUsername || '')
+        setOriginalApiPassword(response.user.apiPassword || '')
         setEditMode(false)
         setSuccess('Profile updated successfully!')
         
@@ -270,6 +295,115 @@ function Profile({ onBack, onProfileUpdate }) {
                 </div>
               )}
             </div>
+            
+            {/* API Credentials */}
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Settings className="w-4 h-4 text-secondary-500" />
+                  <label className="block text-sm font-medium text-secondary-700">API Username</label>
+                  {userData.apiUsername && !editMode && (
+                    <Check className="w-4 h-4 text-green-600" />
+                  )}
+                </div>
+                
+                {editMode ? (
+                  <div>
+                    <input
+                      type="text"
+                      value={apiUsername}
+                      onChange={(e) => setApiUsername(e.target.value)}
+                      placeholder="your-api-username"
+                      className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <p className="text-secondary-500 text-xs mt-2">
+                      Enter your API username for the voice calling API
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    {userData.apiUsername ? (
+                      <p className="text-secondary-900 text-base font-mono">
+                        {userData.apiUsername}
+                      </p>
+                    ) : (
+                      <p className="text-secondary-500 text-base italic">
+                        No API username configured
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Settings className="w-4 h-4 text-secondary-500" />
+                  <label className="block text-sm font-medium text-secondary-700">API Password</label>
+                  {userData.apiPassword && !editMode && (
+                    <Check className="w-4 h-4 text-green-600" />
+                  )}
+                </div>
+                
+                {editMode ? (
+                  <div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={apiPassword}
+                        onChange={(e) => setApiPassword(e.target.value)}
+                        placeholder="your-api-password"
+                        className="w-full px-3 py-2 pr-10 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-secondary-500 hover:text-secondary-700"
+                        title={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-secondary-500 text-xs mt-2">
+                      Enter your API password for the voice calling API
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    {userData.apiPassword ? (
+                      <div className="flex items-center space-x-2">
+                        <p className="text-secondary-900 text-base font-mono">
+                          {showPassword ? userData.apiPassword : '•••••••••••'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowPassword(!showPassword);
+                          }}
+                          className="text-secondary-500 hover:text-secondary-700"
+                          title={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-secondary-500 text-base italic">
+                        No API password configured
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Voice ID */}
             <div>
@@ -330,7 +464,7 @@ function Profile({ onBack, onProfileUpdate }) {
                 <p className="text-xs text-blue-700 mb-1 font-medium">Full URL (when campaign numbers are added):</p>
                 <code className="text-xs text-neutral-800 font-mono break-all">
                   {userData ? (
-                    `http://180.150.249.216/webapi/datapush?username=testapi1@api.com&password=123@123&phonenumber={phone_numbers}&callerid=fixed&voiceid=${userData.voiceId || userData.voice_id || '5628'}${userData.aiProjectId ? `&aiprojectid=${userData.aiProjectId}` : ''}`
+                    `http://180.150.249.216/webapi/datapush?username=${userData.apiUsername || 'testapi1@api.com'}&password=${userData.apiPassword || '123@123'}&phonenumber={phone_numbers}&callerid=fixed&voiceid=${userData.voiceId || userData.voice_id || '5628'}${userData.aiProjectId ? `&aiprojectid=${userData.aiProjectId}` : ''}`
                   ) : (
                     'http://180.150.249.216/webapi/datapush?...'
                   )}
@@ -359,10 +493,26 @@ function Profile({ onBack, onProfileUpdate }) {
                           </code>
                         </li>
                       )}
-                      {!userData?.aiProjectId && (
+                      {userData?.apiUsername && (
+                        <li className="flex items-center justify-between">
+                          <span className="text-neutral-600">username:</span>
+                          <code className="bg-white px-2 py-1 rounded font-mono text-green-700 text-xs max-w-[150px] truncate">
+                            {userData.apiUsername}
+                          </code>
+                        </li>
+                      )}
+                      {userData?.apiPassword && (
+                        <li className="flex items-center justify-between">
+                          <span className="text-neutral-600">password:</span>
+                          <code className="bg-white px-2 py-1 rounded font-mono text-green-700 text-xs max-w-[150px] truncate">
+                            ••••••••••••
+                          </code>
+                        </li>
+                      )}
+                      {!userData?.apiUsername && !userData?.apiPassword && (
                         <li className="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded p-2">
                           <AlertCircle className="w-3 h-3 inline mr-1" />
-                          No aiProjectId configured. Click Edit to add.
+                          No API credentials configured. Click Edit to add.
                         </li>
                       )}
                     </ul>
@@ -371,14 +521,14 @@ function Profile({ onBack, onProfileUpdate }) {
                   <div className="bg-gray-50 border border-gray-200 rounded p-3">
                     <p className="text-xs text-gray-700 font-medium mb-2 flex items-center">
                       <Info className="w-3 h-3 mr-1" />
-                      Static Values (Fixed):
+                      Fallback Values:
                     </p>
                     <ul className="text-xs space-y-1">
-                      <li className="flex items-center justify-between">
+                      <li className="flex items-center justify-between" title="Used when no custom API username is configured">
                         <span className="text-gray-600">username:</span>
                         <code className="bg-white px-2 py-1 rounded font-mono text-gray-700">testapi1@api.com</code>
                       </li>
-                      <li className="flex items-center justify-between">
+                      <li className="flex items-center justify-between" title="Used when no custom API password is configured">
                         <span className="text-gray-600">password:</span>
                         <code className="bg-white px-2 py-1 rounded font-mono text-gray-700">123@123</code>
                       </li>
@@ -387,6 +537,9 @@ function Profile({ onBack, onProfileUpdate }) {
                         <code className="bg-white px-2 py-1 rounded font-mono text-gray-700">fixed</code>
                       </li>
                     </ul>
+                    <p className="text-xs text-gray-500 mt-2 italic">
+                      Configure your custom API credentials in the form above to override these fallback values.
+                    </p>
                   </div>
                 </div>
                 
